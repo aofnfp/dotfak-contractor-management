@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""
+FastAPI backend for DotFak Group LLC - Contractor Management Platform.
+
+Provides REST API for:
+- User authentication (signup, login) via Supabase
+- Contractor management
+- Paystub upload and parsing
+- Earnings calculation and payment tracking
+- Admin and contractor dashboards
+"""
+
+import sys
+from pathlib import Path
+from typing import List, Optional
+from datetime import date
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import json
+from dotenv import load_dotenv
+
+# Add project root to path so we can import backend modules
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "tools"))
+
+# Import backend modules
+from backend.config import FRONTEND_URL, ENVIRONMENT, API_HOST, API_PORT
+from backend.routers import (
+    auth_router,
+    contractors_router,
+    assignments_router,
+    paystubs_router,
+    payments_router,
+    earnings_router
+)
+
+# Import tools
+from extract_pdf_text import extract_text_from_pdf
+from parsers import get_parser, AVAILABLE_PARSERS
+
+load_dotenv()
+
+app = FastAPI(
+    title="DotFak Contractor Management API",
+    description="API for contractor management, paystub processing, and earnings tracking",
+    version="1.0.0"
+)
+
+# CORS configuration - use frontend URL from config
+allowed_origins = [FRONTEND_URL]
+if ENVIRONMENT == "development":
+    allowed_origins.append("http://localhost:3000")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(contractors_router)
+app.include_router(assignments_router)
+app.include_router(paystubs_router)
+app.include_router(payments_router)
+app.include_router(earnings_router)
+
+
+# Pydantic models
+class PaystubSummary(BaseModel):
+    id: int
+    employee_name: str
+    pay_period_begin: date
+    pay_period_end: date
+    check_date: Optional[date]
+    gross_pay: Optional[float]
+    net_pay: Optional[float]
+    organization: str
+
+
+class UploadResponse(BaseModel):
+    success: bool
+    message: str
+    paystubs_count: int
+    paystubs: List[dict]
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """API root - health check."""
+    return {
+        "service": "Paystub Extractor API",
+        "version": "1.0.0",
+        "status": "running"
+    }
+
+
+# Get available organizations
+@app.get("/organizations")
+async def get_organizations():
+    """Get list of supported organizations."""
+    return {
+        "organizations": list(AVAILABLE_PARSERS.keys())
+    }
+
+
+# Upload and parse paystub
+@app.post("/upload", response_model=UploadResponse)
+async def upload_paystub(
+    file: UploadFile = File(...),
+    organization: str = Form(...)
+):
+    """
+    Upload a paystub PDF and extract data.
+
+    Args:
+        file: PDF file to upload
+        organization: Organization identifier
+
+    Returns:
+        Extracted paystub data
+    """
+    # Validate organization
+    if organization not in AVAILABLE_PARSERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Organization '{organization}' not supported. "
+                   f"Available: {list(AVAILABLE_PARSERS.keys())}"
+        )
+
+    # Validate file type
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(
+            status_code=400,
+            detail="File must be a PDF"
+        )
+
+    try:
+        # Save uploaded file temporarily
+        tmp_dir = Path(__file__).parent.parent / ".tmp"
+        tmp_dir.mkdir(exist_ok=True)
+
+        pdf_path = tmp_dir / file.filename
+        with open(pdf_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        # Extract text
+        text = extract_text_from_pdf(str(pdf_path))
+
+        # Parse with organization-specific parser
+        parser_module = get_parser(organization)
+        paystubs = parser_module.parse(text, file.filename)
+
+        # Clean up temp file
+        pdf_path.unlink()
+
+        return UploadResponse(
+            success=True,
+            message=f"Successfully extracted {len(paystubs)} paystub(s)",
+            paystubs_count=len(paystubs),
+            paystubs=paystubs
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process PDF: {str(e)}"
+        )
+
+
+# Save paystubs to database
+@app.post("/paystubs/save")
+async def save_paystubs(paystubs: List[dict]):
+    """
+    Save paystubs to database.
+
+    Args:
+        paystubs: List of paystub dictionaries
+
+    Returns:
+        Success message with record IDs
+    """
+    try:
+        from save_paystub_to_db import save_paystub
+
+        record_ids = []
+        for paystub in paystubs:
+            record_id = save_paystub(paystub)
+            record_ids.append(record_id)
+
+        return {
+            "success": True,
+            "message": f"Saved {len(record_ids)} paystub(s)",
+            "record_ids": record_ids
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save paystubs: {str(e)}"
+        )
+
+
+# Get paystubs with filtering
+@app.get("/paystubs")
+async def get_paystubs(
+    employee_id: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    organization: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """
+    Get paystubs with optional filtering.
+
+    Args:
+        employee_id: Filter by employee ID
+        start_date: Filter by pay period start date (>=)
+        end_date: Filter by pay period end date (<=)
+        organization: Filter by organization
+        limit: Maximum number of results
+
+    Returns:
+        List of paystubs
+    """
+    try:
+        from backend.config import supabase_admin_client
+
+        # Build query using Supabase client
+        query = supabase_admin_client.table("paystubs").select("*")
+
+        if employee_id:
+            query = query.eq("employee_id", employee_id)
+
+        if start_date:
+            query = query.gte("pay_period_begin", str(start_date))
+
+        if end_date:
+            query = query.lte("pay_period_end", str(end_date))
+
+        if organization:
+            query = query.eq("organization", organization)
+
+        # Execute query with ordering and limit
+        result = query.order("pay_period_begin", desc=True).limit(limit).execute()
+
+        return {
+            "success": True,
+            "count": len(result.data) if result.data else 0,
+            "paystubs": result.data if result.data else []
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve paystubs: {str(e)}"
+        )
+
+
+# Get single paystub by ID
+@app.get("/paystubs/{paystub_id}")
+async def get_paystub(paystub_id: int):
+    """Get complete paystub data by ID."""
+    try:
+        from backend.config import supabase_admin_client
+
+        # Query using Supabase client
+        result = supabase_admin_client.table("paystubs").select("*").eq("id", paystub_id).execute()
+
+        if not result.data or len(result.data) == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Paystub not found"
+            )
+
+        return result.data[0]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve paystub: {str(e)}"
+        )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=API_HOST, port=API_PORT)

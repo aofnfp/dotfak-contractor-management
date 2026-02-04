@@ -1,0 +1,30 @@
+# Core dependencies for WAT framework
+python-dotenv>=1.0.0
+
+# PDF Processing
+pdfplumber>=0.10.0
+
+# Web Framework (Backend API)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Database
+psycopg2-binary>=2.9.9  # PostgreSQL adapter
+sqlalchemy>=2.0.0
+
+# Supabase
+supabase>=2.3.0  # Python client for Supabase Auth & API
+
+# JWT token verification
+python-jose[cryptography]>=3.3.0
+
+# Data validation
+pydantic>=2.0.0
+pydantic[email]>=2.0.0  # For EmailStr validation
+
+# Note: CORS is built into FastAPI, no additional package needed
+
+# Optional: OCR support (if PDFs are scanned images)
+# pytesseract>=0.3.10
+# Pillow>=10.0.0
