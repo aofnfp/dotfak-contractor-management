@@ -1,31 +1,43 @@
-# Environment and secrets
-.env
-credentials.json
-token.json
-*.key
-*.pem
-
-# Temporary files
-.tmp/
-*.tmp
-*.temp
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-venv/
 env/
+venv/
 ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
 
-# OS files
-.DS_Store
-Thumbs.db
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.vercel
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+.tmp/
+*.tmp
