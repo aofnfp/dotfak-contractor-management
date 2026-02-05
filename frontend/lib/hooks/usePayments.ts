@@ -43,9 +43,11 @@ export function useCreatePayment() {
 
   return useMutation({
     mutationFn: (data: CreatePaymentRequest) => paymentsApi.create(data),
-    onSuccess: () => {
-      // Invalidate all payment and earning queries
-      queryClient.invalidateQueries({ queryKey: ['payments'] })
+    onSuccess: (_, variables) => {
+      // Invalidate only specific queries that are affected
+      queryClient.invalidateQueries({ queryKey: ['payments'], exact: true })
+      queryClient.invalidateQueries({ queryKey: ['payments', 'summary'] })
+      queryClient.invalidateQueries({ queryKey: ['payments', 'contractor', variables.contractor_id] })
       queryClient.invalidateQueries({ queryKey: ['earnings'] })
       toast.success('Payment recorded successfully!')
     },
@@ -84,8 +86,13 @@ export function useDeletePayment() {
 
   return useMutation({
     mutationFn: (id: string) => paymentsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payments'] })
+    onSuccess: (_, id) => {
+      // Invalidate list and summary (most affected by deletion)
+      queryClient.invalidateQueries({ queryKey: ['payments'], exact: true })
+      queryClient.invalidateQueries({ queryKey: ['payments', 'summary'] })
+      // Remove the deleted payment from cache
+      queryClient.removeQueries({ queryKey: ['payments', id] })
+      // Invalidate earnings as allocation may have changed
       queryClient.invalidateQueries({ queryKey: ['earnings'] })
       toast.success('Payment deleted successfully')
     },

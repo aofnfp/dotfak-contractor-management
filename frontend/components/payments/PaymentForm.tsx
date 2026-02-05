@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -49,6 +49,7 @@ export function PaymentForm() {
   
   const [selectedContractorId, setSelectedContractorId] = useState<string>('')
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
+  const [debouncedAmount, setDebouncedAmount] = useState<number>(0)
 
   const {
     register,
@@ -64,12 +65,21 @@ export function PaymentForm() {
     },
   })
 
+  // Debounce amount changes (500ms delay)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedAmount(paymentAmount)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [paymentAmount])
+
   const watchedAmount = watch('amount')
 
-  // Fetch allocation preview
+  // Fetch allocation preview with debounced amount
   const { data: allocationPreview, isLoading: previewLoading } = useAllocationPreview(
     selectedContractorId,
-    paymentAmount
+    debouncedAmount
   )
 
   const onSubmit = async (data: PaymentFormData) => {

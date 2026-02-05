@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { MobileNav } from '@/components/layout/MobileNav'
@@ -20,6 +20,15 @@ export default function DashboardLayout({
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
+  // Memoize callbacks to prevent unnecessary re-renders
+  const handleMobileNavClose = useCallback(() => {
+    setMobileNavOpen(false)
+  }, [])
+
+  const handleMenuClick = useCallback(() => {
+    setMobileNavOpen(true)
+  }, [])
+
   return (
     <ProtectedRoute>
       <div className="flex h-screen overflow-hidden bg-background">
@@ -31,13 +40,13 @@ export default function DashboardLayout({
         {/* Mobile Navigation */}
         <MobileNav
           isOpen={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
+          onClose={handleMobileNavClose}
         />
 
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <Header onMenuClick={() => setMobileNavOpen(true)} />
+          <Header onMenuClick={handleMenuClick} />
 
           {/* Page Content */}
           <main className="flex-1 overflow-y-auto">
