@@ -85,7 +85,50 @@ async def list_earnings(
 
         result = query.order("pay_period_begin", desc=True).limit(limit).execute()
 
-        return result.data if result.data else []
+        # Enrich earnings with contractor and client details
+        enriched_earnings = []
+        for earning in result.data or []:
+            enriched = dict(earning)
+
+            # Add contractor details
+            if earning.get('contractor_assignment_id'):
+                assignment = supabase_admin_client.table("contractor_assignments").select(
+                    "contractor_id, client_company_id"
+                ).eq("id", earning['contractor_assignment_id']).execute()
+
+                if assignment.data:
+                    # Get contractor info
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name, contractor_code"
+                    ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                    if contractor.data:
+                        c = contractor.data[0]
+                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                        enriched['contractor_code'] = c['contractor_code']
+
+                    # Get client company info
+                    client = supabase_admin_client.table("client_companies").select(
+                        "name, code"
+                    ).eq("id", assignment.data[0]['client_company_id']).execute()
+
+                    if client.data:
+                        enriched['client_name'] = client.data[0]['name']
+                        enriched['client_code'] = client.data[0]['code']
+
+            # Add paystub info
+            if earning.get('paystub_id'):
+                paystub = supabase_admin_client.table("paystubs").select(
+                    "file_name, check_date"
+                ).eq("id", earning['paystub_id']).execute()
+
+                if paystub.data:
+                    enriched['paystub_file_name'] = paystub.data[0].get('file_name')
+                    enriched['paystub_check_date'] = paystub.data[0].get('check_date')
+
+            enriched_earnings.append(enriched)
+
+        return enriched_earnings
 
     except Exception as e:
         logger.error(f"Failed to list earnings: {str(e)}")
@@ -190,17 +233,111 @@ async def list_unpaid_earnings(
     """
     try:
         # Get all unpaid/partially paid earnings
-        earnings = supabase_admin_client.table("contractor_earnings").select(
-            "*, contractor_assignments(*, contractors(contractor_code, first_name, last_name))"
-        ).in_("payment_status", ["unpaid", "partially_paid"]).order(
-            "pay_period_begin", desc=False  # Oldest first
+        result = supabase_admin_client.table("contractor_earnings").select("*").in_(
+            "payment_status", ["unpaid", "partially_paid"]
+        ).order(
+            "pay_period_begin", desc=False  # Oldest first (FIFO)
         ).execute()
 
-        return earnings.data if earnings.data else []
+        # Enrich earnings with contractor and client details
+        enriched_earnings = []
+        for earning in result.data or []:
+            enriched = dict(earning)
+
+            # Add contractor details
+            if earning.get('contractor_assignment_id'):
+                assignment = supabase_admin_client.table("contractor_assignments").select(
+                    "contractor_id, client_company_id"
+                ).eq("id", earning['contractor_assignment_id']).execute()
+
+                if assignment.data:
+                    # Get contractor info
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name, contractor_code"
+                    ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                    if contractor.data:
+                        c = contractor.data[0]
+                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                        enriched['contractor_code'] = c['contractor_code']
+
+                    # Get client company info
+                    client = supabase_admin_client.table("client_companies").select(
+                        "name, code"
+                    ).eq("id", assignment.data[0]['client_company_id']).execute()
+
+                    if client.data:
+                        enriched['client_name'] = client.data[0]['name']
+                        enriched['client_code'] = client.data[0]['code']
+
+            # Add paystub info
+            if earning.get('paystub_id'):
+                paystub = supabase_admin_client.table("paystubs").select(
+                    "file_name, check_date"
+                ).eq("id", earning['paystub_id']).execute()
+
+                if paystub.data:
+                    enriched['paystub_file_name'] = paystub.data[0].get('file_name')
+                    enriched['paystub_check_date'] = paystub.data[0].get('check_date')
+
+            enriched_earnings.append(enriched)
+
+        return enriched_earnings
 
     except Exception as e:
         logger.error(f"Failed to list unpaid earnings: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve unpaid earnings: {str(e)}"
+        )
+
+
+@router.get("/summary")
+async def get_earnings_summary(
+    user: dict = Depends(require_admin)
+):
+    """
+    Get earnings summary statistics (admin only).
+
+    Returns aggregate stats across all earnings:
+    - Total earnings
+    - Total paid
+    - Total pending
+    - Count by payment status
+
+    Args:
+        user: Current user (admin)
+
+    Returns:
+        Summary statistics
+    """
+    try:
+        # Get all earnings
+        earnings_result = supabase_admin_client.table("contractor_earnings").select("*").execute()
+
+        earnings = earnings_result.data if earnings_result.data else []
+
+        # Calculate summary stats
+        total_earnings = sum(float(e['contractor_total_earnings']) for e in earnings)
+        total_paid = sum(float(e['amount_paid']) for e in earnings)
+        total_pending = sum(float(e['amount_pending']) for e in earnings)
+
+        count_unpaid = sum(1 for e in earnings if e['payment_status'] == 'unpaid')
+        count_partially_paid = sum(1 for e in earnings if e['payment_status'] == 'partially_paid')
+        count_paid = sum(1 for e in earnings if e['payment_status'] == 'paid')
+
+        return {
+            'total_earnings': total_earnings,
+            'total_paid': total_paid,
+            'total_pending': total_pending,
+            'count_unpaid': count_unpaid,
+            'count_partially_paid': count_partially_paid,
+            'count_paid': count_paid
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get earnings summary: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve earnings summary: {str(e)}"
         )

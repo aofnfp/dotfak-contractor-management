@@ -68,10 +68,30 @@ async def create_contractor(
                     detail="Failed to create auth user"
                 )
 
-        # Step 2: Create contractor record
+        # Step 2: Generate contractor code if not provided
+        contractor_code = contractor.contractor_code
+        if not contractor_code:
+            # Query for the highest existing contractor code
+            result = supabase_admin_client.table("contractors").select("contractor_code").like("contractor_code", "DTK-%").order("contractor_code", desc=True).limit(1).execute()
+
+            if result.data and len(result.data) > 0:
+                # Extract number from DTK-XXX and increment
+                last_code = result.data[0]["contractor_code"]
+                try:
+                    last_number = int(last_code.split("-")[1])
+                    next_number = last_number + 1
+                except (IndexError, ValueError):
+                    next_number = 1
+            else:
+                next_number = 1
+
+            contractor_code = f"DTK-{next_number:03d}"
+            logger.info(f"Auto-generated contractor code: {contractor_code}")
+
+        # Step 3: Create contractor record
         contractor_data = {
             "auth_user_id": str(auth_user_id) if auth_user_id else None,
-            "contractor_code": contractor.contractor_code,
+            "contractor_code": contractor_code,
             "first_name": contractor.first_name,
             "last_name": contractor.last_name,
             "phone": contractor.phone,

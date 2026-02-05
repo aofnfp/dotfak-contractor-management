@@ -28,7 +28,8 @@ router = APIRouter(prefix="/paystubs", tags=["paystubs"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_paystub_with_earnings(
     file: UploadFile = File(...),
-    organization: str = Form(...),
+    client_company_id: str = Form(...),
+    contractor_assignment_id: Optional[str] = Form(None),
     user: dict = Depends(require_admin)
 ):
     """
@@ -37,24 +38,37 @@ async def upload_paystub_with_earnings(
     This endpoint:
     1. Validates and parses the PDF
     2. Checks for duplicates (SHA-256 hash)
-    3. Auto-matches to contractor assignment (by employee_id)
+    3. Auto-matches to contractor assignment (by employee_id) if not provided
     4. Calculates contractor earnings (fixed or percentage rate)
     5. Saves paystub and earnings to database
 
     Args:
         file: PDF file to upload
-        organization: Organization identifier (e.g., 'ap_account_services')
+        client_company_id: UUID of the client company
+        contractor_assignment_id: Optional UUID of contractor assignment (for manual assignment)
         user: Current user (admin)
 
     Returns:
         Paystub and earnings details
     """
     try:
-        # Validate organization
+        # Get client company to determine organization
+        client_result = supabase_admin_client.table("client_companies").select("*").eq("id", client_company_id).execute()
+
+        if not client_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Client company not found: {client_company_id}"
+            )
+
+        client_company = client_result.data[0]
+        organization = client_company.get('code', 'ap_account_services')  # Use code as organization identifier
+
+        # Validate organization parser exists
         if organization not in AVAILABLE_PARSERS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Organization '{organization}' not supported. "
+                detail=f"No parser available for organization '{organization}'. "
                        f"Available: {list(AVAILABLE_PARSERS.keys())}"
             )
 
@@ -103,98 +117,166 @@ async def upload_paystub_with_earnings(
                 detail="Failed to parse paystub - no data extracted"
             )
 
-        # Process first paystub (should only be one per file)
-        paystub_data = paystubs[0]
+        logger.info(f"📄 Parsed {len(paystubs)} paystub(s) from PDF")
 
-        # Get client company
-        client_company = PaystubService.get_client_company_by_code(organization)
-        if not client_company:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Client company not found for organization: {organization}"
-            )
+        # Process ALL paystubs from the PDF
+        processed_paystubs = []
+        skipped_count = 0
+        errors = []
 
-        client_company_id = client_company['id']
+        for idx, paystub_data in enumerate(paystubs, 1):
+            try:
+                pay_period_begin = paystub_data.get('header', {}).get('pay_period', {}).get('begin')
+                pay_period_end = paystub_data.get('header', {}).get('pay_period', {}).get('end')
+                employee_id = paystub_data.get('header', {}).get('employee', {}).get('id')
 
-        # Extract employee ID for auto-matching
-        employee_id = paystub_data.get('header', {}).get('employee', {}).get('id')
-        if not employee_id:
+                print(f"🔍 Processing paystub {idx}/{len(paystubs)}: Period {pay_period_begin} to {pay_period_end}, Employee: {employee_id}")
+
+                if not pay_period_begin:
+                    print(f"⚠️  Paystub {idx}: Missing pay period - skipping")
+                    errors.append(f"Paystub {idx}: Missing pay period")
+                    skipped_count += 1
+                    continue
+
+                # Get gross pay from current paystub
+                current_gross_pay = paystub_data.get('summary', {}).get('current', {}).get('gross_pay', 0)
+
+                # Check for duplicate pay period AND gross pay for this employee
+                # This allows multiple paystubs for the same period if they have different amounts
+                # (e.g., detailed paystub vs summary/YTD paystub)
+                if employee_id:
+                    existing_period = supabase_admin_client.table("paystubs").select("id, gross_pay").eq(
+                        "employee_id", employee_id
+                    ).eq("pay_period_begin", pay_period_begin).eq("pay_period_end", pay_period_end).execute()
+
+                    if existing_period.data:
+                        # Check if any existing paystub has the same gross pay (within $0.01 tolerance)
+                        is_duplicate = any(
+                            abs(float(existing['gross_pay']) - float(current_gross_pay)) < 0.01
+                            for existing in existing_period.data
+                        )
+
+                        if is_duplicate:
+                            print(f"⏭️  Paystub {idx}: Duplicate found - same period and gross pay (${current_gross_pay}) - skipping")
+                            errors.append(f"Paystub {idx}: Duplicate - same period and gross pay ${current_gross_pay}")
+                            skipped_count += 1
+                            continue
+                        else:
+                            print(f"ℹ️  Paystub {idx}: Same period but different gross pay (${current_gross_pay}) - saving as separate record")
+
+                assignment = None
+                auto_matched = False
+                current_contractor_assignment_id = contractor_assignment_id
+
+                # If contractor assignment provided manually, use it
+                if contractor_assignment_id:
+                    # Verify assignment exists and belongs to this client
+                    assignment_result = supabase_admin_client.table("contractor_assignments").select("*").eq(
+                        "id", contractor_assignment_id
+                    ).eq("client_company_id", client_company_id).execute()
+
+                    if not assignment_result.data:
+                        print(f"⚠️  Paystub {idx}: Contractor assignment not found - skipping")
+                        errors.append(f"Paystub {idx}: Contractor assignment not found")
+                        skipped_count += 1
+                        continue
+
+                    assignment = assignment_result.data[0]
+                else:
+                    # Try to auto-match by employee ID
+                    if employee_id:
+                        assignment = PaystubService.find_contractor_assignment(
+                            employee_id,
+                            client_company_id,
+                            pay_period_begin
+                        )
+
+                        if assignment:
+                            current_contractor_assignment_id = assignment['id']
+                            auto_matched = True
+
+                # Save paystub
+                saved_paystub = PaystubService.save_paystub(
+                    paystub_data=paystub_data,
+                    contractor_assignment_id=current_contractor_assignment_id,
+                    client_company_id=client_company_id,
+                    file_hash=file_hash,
+                    uploaded_by=user['user_id'],
+                    file_name=file.filename,
+                    file_size=len(file_content),
+                    file_path=str(pdf_path)
+                )
+
+                # Build paystub response with details from database
+                paystub_with_details = {
+                    "id": saved_paystub['id'],
+                    "contractor_assignment_id": current_contractor_assignment_id,
+                    "client_company_id": client_company_id,
+                    "file_name": file.filename,
+                    "pay_period_begin": saved_paystub['pay_period_begin'],
+                    "pay_period_end": saved_paystub['pay_period_end'],
+                    "gross_pay": saved_paystub['gross_pay'],
+                    "net_pay": saved_paystub.get('net_pay', 0),
+                    "total_hours": saved_paystub.get('total_hours'),
+                    "auto_matched": auto_matched,
+                    "contractor_name": assignment.get('contractor', {}).get('first_name') if assignment else None,
+                    "contractor_code": assignment.get('contractor', {}).get('contractor_code') if assignment else None,
+                }
+
+                # If matched to contractor, calculate and save earnings
+                if assignment:
+                    try:
+                        earnings = calculate_contractor_earnings(paystub_data, assignment)
+
+                        saved_earnings = PaystubService.save_earnings(
+                            paystub_id=saved_paystub['id'],
+                            contractor_assignment_id=current_contractor_assignment_id,
+                            earnings=earnings,
+                            pay_period_begin=saved_paystub['pay_period_begin'],
+                            pay_period_end=saved_paystub['pay_period_end']
+                        )
+
+                        paystub_with_details["earnings"] = {
+                            "id": saved_earnings['id'],
+                            "contractor_total": saved_earnings['contractor_total_earnings'],
+                            "regular_earnings": saved_earnings['contractor_regular_earnings'],
+                            "bonus_share": saved_earnings['contractor_bonus_share'],
+                        }
+
+                        logger.info(f"✅ Paystub {idx} processed - Contractor earnings: ${saved_earnings['contractor_total_earnings']}")
+
+                    except Exception as e:
+                        logger.error(f"❌ Paystub {idx} earnings calculation failed: {str(e)}")
+                        paystub_with_details["earnings_error"] = str(e)
+                        errors.append(f"Paystub {idx}: {str(e)}")
+
+                processed_paystubs.append(paystub_with_details)
+                print(f"✅ Paystub {idx}/{len(paystubs)} saved: {pay_period_begin} to {pay_period_end}")
+
+            except Exception as e:
+                print(f"❌ Paystub {idx} failed: {str(e)}")
+                errors.append(f"Paystub {idx}: {str(e)}")
+                continue
+
+        # Build final response
+        if not processed_paystubs and not skipped_count:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Paystub missing employee ID - cannot auto-match"
+                detail="No paystubs could be processed"
             )
-
-        pay_period_begin = paystub_data.get('header', {}).get('pay_period', {}).get('begin')
-        if not pay_period_begin:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Paystub missing pay period - cannot process"
-            )
-
-        # Try to find contractor assignment
-        assignment = PaystubService.find_contractor_assignment(
-            employee_id,
-            client_company_id,
-            pay_period_begin
-        )
-
-        contractor_assignment_id = assignment['id'] if assignment else None
-
-        # Save paystub
-        saved_paystub = PaystubService.save_paystub(
-            paystub_data=paystub_data,
-            contractor_assignment_id=contractor_assignment_id,
-            client_company_id=client_company_id,
-            file_hash=file_hash,
-            uploaded_by=user['user_id']
-        )
 
         response = {
             "success": True,
-            "message": "Paystub uploaded successfully",
-            "paystub": {
-                "id": saved_paystub['id'],
-                "employee_id": saved_paystub['employee_id'],
-                "employee_name": saved_paystub['employee_name'],
-                "pay_period": f"{saved_paystub['pay_period_begin']} to {saved_paystub['pay_period_end']}",
-                "gross_pay": saved_paystub['gross_pay'],
-                "matched_contractor": contractor_assignment_id is not None
-            }
+            "message": f"Processed {len(processed_paystubs)} paystub(s) successfully",
+            "total_parsed": len(paystubs),
+            "total_processed": len(processed_paystubs),
+            "total_skipped": skipped_count,
+            "paystubs": processed_paystubs
         }
 
-        # If matched to contractor, calculate and save earnings
-        if assignment:
-            try:
-                earnings = calculate_contractor_earnings(paystub_data, assignment)
-
-                saved_earnings = PaystubService.save_earnings(
-                    paystub_id=saved_paystub['id'],
-                    contractor_assignment_id=contractor_assignment_id,
-                    earnings=earnings,
-                    pay_period_begin=saved_paystub['pay_period_begin'],
-                    pay_period_end=saved_paystub['pay_period_end']
-                )
-
-                response["earnings"] = {
-                    "id": saved_earnings['id'],
-                    "contractor_total": saved_earnings['contractor_total_earnings'],
-                    "regular_earnings": saved_earnings['contractor_regular_earnings'],
-                    "bonus_share": saved_earnings['contractor_bonus_share'],
-                    "company_margin": saved_earnings['company_margin'],
-                    "payment_status": saved_earnings['payment_status'],
-                    "amount_pending": saved_earnings['amount_pending']
-                }
-
-                logger.info(f"✅ Paystub processed - Contractor earnings: ${saved_earnings['contractor_total_earnings']}")
-
-            except Exception as e:
-                logger.error(f"Earnings calculation failed: {str(e)}")
-                response["earnings_error"] = str(e)
-                response["message"] += " (earnings calculation failed)"
-
-        else:
-            response["message"] += " (no contractor match - earnings not calculated)"
-            logger.warning(f"⚠️  No contractor matched for employee {employee_id}")
+        if errors:
+            response["errors"] = errors
+            response["message"] += f" ({len(errors)} error(s) occurred)"
 
         return response
 
@@ -239,7 +321,40 @@ async def list_paystubs(
 
         result = query.order("created_at", desc=True).limit(limit).execute()
 
-        return result.data if result.data else []
+        # Enrich paystubs with contractor and client details
+        enriched_paystubs = []
+        for paystub in result.data or []:
+            enriched = dict(paystub)
+
+            # Add contractor details
+            if paystub.get('contractor_assignment_id'):
+                assignment = supabase_admin_client.table("contractor_assignments").select(
+                    "contractor_id"
+                ).eq("id", paystub['contractor_assignment_id']).execute()
+
+                if assignment.data:
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name, contractor_code"
+                    ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                    if contractor.data:
+                        c = contractor.data[0]
+                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                        enriched['contractor_code'] = c['contractor_code']
+
+            # Add client details
+            if paystub.get('client_company_id'):
+                client = supabase_admin_client.table("client_companies").select(
+                    "name, code"
+                ).eq("id", paystub['client_company_id']).execute()
+
+                if client.data:
+                    enriched['client_name'] = client.data[0]['name']
+                    enriched['client_code'] = client.data[0]['code']
+
+            enriched_paystubs.append(enriched)
+
+        return enriched_paystubs
 
     except Exception as e:
         logger.error(f"Failed to list paystubs: {str(e)}")
@@ -286,6 +401,31 @@ async def get_paystub(
 
             if earnings_result.data:
                 paystub['earnings'] = earnings_result.data[0]
+
+        # Enrich with contractor and client details
+        if paystub.get('contractor_assignment_id'):
+            assignment = supabase_admin_client.table("contractor_assignments").select(
+                "contractor_id"
+            ).eq("id", paystub['contractor_assignment_id']).execute()
+
+            if assignment.data:
+                contractor = supabase_admin_client.table("contractors").select(
+                    "first_name, last_name, contractor_code"
+                ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                if contractor.data:
+                    c = contractor.data[0]
+                    paystub['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                    paystub['contractor_code'] = c['contractor_code']
+
+        if paystub.get('client_company_id'):
+            client = supabase_admin_client.table("client_companies").select(
+                "name, code"
+            ).eq("id", paystub['client_company_id']).execute()
+
+            if client.data:
+                paystub['client_name'] = client.data[0]['name']
+                paystub['client_code'] = client.data[0]['code']
 
         return paystub
 

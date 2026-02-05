@@ -137,7 +137,7 @@ async def create_assignment(
         )
 
 
-@router.get("", response_model=List[AssignmentResponse])
+@router.get("", response_model=List[AssignmentWithDetails])
 async def list_assignments(
     contractor_id: Optional[str] = None,
     client_company_id: Optional[str] = None,
@@ -190,7 +190,31 @@ async def list_assignments(
 
         result = query.order("created_at", desc=True).limit(limit).execute()
 
-        return result.data if result.data else []
+        # Fetch and join contractor and client details for each assignment
+        assignments = result.data if result.data else []
+        for assignment in assignments:
+            # Fetch contractor details
+            contractor = supabase_admin_client.table("contractors").select(
+                "first_name, last_name, contractor_code"
+            ).eq("id", assignment["contractor_id"]).execute()
+
+            # Fetch client details
+            client = supabase_admin_client.table("client_companies").select(
+                "name, code"
+            ).eq("id", assignment["client_company_id"]).execute()
+
+            # Add joined data
+            if contractor.data:
+                c = contractor.data[0]
+                assignment["contractor_name"] = f"{c['first_name']} {c['last_name']}"
+                assignment["contractor_code"] = c["contractor_code"]
+
+            if client.data:
+                cl = client.data[0]
+                assignment["client_name"] = cl["name"]
+                assignment["client_code"] = cl["code"]
+
+        return assignments
 
     except Exception as e:
         logger.error(f"Failed to list assignments: {str(e)}")
@@ -200,7 +224,7 @@ async def list_assignments(
         )
 
 
-@router.get("/{assignment_id}", response_model=AssignmentResponse)
+@router.get("/{assignment_id}", response_model=AssignmentWithDetails)
 async def get_assignment(
     assignment_id: str,
     user: dict = Depends(verify_token)
@@ -240,6 +264,27 @@ async def get_assignment(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You can only view your own assignments"
                 )
+
+        # Fetch contractor details
+        contractor = supabase_admin_client.table("contractors").select(
+            "first_name, last_name, contractor_code"
+        ).eq("id", assignment["contractor_id"]).execute()
+
+        # Fetch client details
+        client = supabase_admin_client.table("client_companies").select(
+            "name, code"
+        ).eq("id", assignment["client_company_id"]).execute()
+
+        # Add joined data
+        if contractor.data:
+            c = contractor.data[0]
+            assignment["contractor_name"] = f"{c['first_name']} {c['last_name']}"
+            assignment["contractor_code"] = c["contractor_code"]
+
+        if client.data:
+            cl = client.data[0]
+            assignment["client_name"] = cl["name"]
+            assignment["client_code"] = cl["code"]
 
         return assignment
 

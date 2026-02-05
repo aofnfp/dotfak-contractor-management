@@ -15,7 +15,7 @@ from uuid import UUID
 
 class ContractorBase(BaseModel):
     """Base contractor fields."""
-    contractor_code: str = Field(..., min_length=3, max_length=50, description="Unique contractor code (e.g., CONT-001)")
+    contractor_code: Optional[str] = Field(None, min_length=3, max_length=50, description="Unique contractor code (auto-generated if not provided, format: DTK-001)")
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
@@ -45,6 +45,7 @@ class ContractorUpdate(BaseModel):
 class ContractorResponse(ContractorBase):
     """Schema for contractor response (full details for admin)."""
     id: UUID
+    contractor_code: str = Field(..., description="Contractor code (always present in response)")
     auth_user_id: Optional[UUID]
     created_at: datetime
     updated_at: datetime

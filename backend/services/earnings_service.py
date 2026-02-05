@@ -27,7 +27,9 @@ class EarningsCalculator:
         'retention',
         'referral',
         'award',
-        'stipend'
+        'stipend',
+        'gift card',
+        'gift'
     ]
 
     # Keywords that identify REGULAR earnings (not bonuses)

@@ -233,3 +233,179 @@ async def get_contractor_summary(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve summary: {str(e)}"
         )
+
+
+@router.get("/preview-allocation")
+async def preview_allocation(
+    contractor_id: str,
+    amount: float,
+    user: dict = Depends(require_admin)
+):
+    """
+    Preview FIFO allocation for a payment amount (admin only).
+
+    Shows how a payment would be distributed across unpaid earnings.
+
+    Args:
+        contractor_id: Contractor UUID
+        amount: Payment amount
+        user: Current user (admin)
+
+    Returns:
+        List of allocations with current/new pending amounts
+    """
+    try:
+        preview = PaymentService.preview_fifo_allocation(contractor_id, amount)
+        return preview
+
+    except Exception as e:
+        logger.error(f"Failed to preview allocation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview allocation: {str(e)}"
+        )
+
+
+@router.get("/summary")
+async def get_payments_summary(
+    user: dict = Depends(require_admin)
+):
+    """
+    Get payment summary statistics (admin only).
+
+    Returns overall payment stats:
+    - Total number of payments
+    - Total amount paid
+    - Count by payment method
+    - Recent payments
+
+    Args:
+        user: Current user (admin)
+
+    Returns:
+        Summary statistics
+    """
+    try:
+        # Get all payments
+        payments_result = supabase_admin_client.table("contractor_payments").select("*").execute()
+        payments = payments_result.data if payments_result.data else []
+
+        # Calculate stats
+        total_payments = len(payments)
+        total_amount = sum(float(p['amount']) for p in payments)
+
+        # Count by method
+        count_by_method = {}
+        for method in ['direct_deposit', 'check', 'cash', 'wire_transfer', 'other']:
+            count_by_method[method] = sum(1 for p in payments if p['payment_method'] == method)
+
+        # Get recent payments (last 5)
+        recent = supabase_admin_client.table("contractor_payments").select(
+            "*, contractors(contractor_code, first_name, last_name)"
+        ).order("created_at", desc=True).limit(5).execute()
+
+        return {
+            'total_payments': total_payments,
+            'total_amount': total_amount,
+            'count_by_method': count_by_method,
+            'recent_payments': recent.data if recent.data else []
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get payments summary: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve payments summary: {str(e)}"
+        )
+
+
+@router.get("/contractor/{contractor_id}")
+async def get_contractor_payments(
+    contractor_id: str,
+    user: dict = Depends(verify_token)
+):
+    """
+    Get all payments for a contractor.
+
+    - Admin: can view any contractor's payments
+    - Contractor: can only view their own payments
+
+    Args:
+        contractor_id: Contractor UUID
+        user: Current user
+
+    Returns:
+        List of payments with allocations
+    """
+    try:
+        # Check authorization for contractors
+        if user.get("role") != "admin":
+            own_contractor_id = get_contractor_id(user["user_id"])
+            if str(contractor_id) != str(own_contractor_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only view your own payments"
+                )
+
+        # Get payments for this contractor
+        payments_result = supabase_admin_client.table("contractor_payments").select(
+            "*, contractors(contractor_code, first_name, last_name)"
+        ).eq("contractor_id", contractor_id).order("payment_date", desc=True).execute()
+
+        return payments_result.data if payments_result.data else []
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get contractor payments: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve payments: {str(e)}"
+        )
+
+
+@router.delete("/{payment_id}")
+async def delete_payment(
+    payment_id: str,
+    user: dict = Depends(require_admin)
+):
+    """
+    Delete a payment and reverse its allocations (admin only).
+
+    CRITICAL: This will:
+    1. Delete the payment record
+    2. Delete all payment allocations
+    3. Restore the earnings to unpaid/partially_paid status
+
+    Args:
+        payment_id: Payment UUID
+        user: Current user (admin)
+
+    Returns:
+        Success message
+    """
+    try:
+        # Check if payment exists
+        payment_result = supabase_admin_client.table("contractor_payments").select("*").eq(
+            "id", payment_id
+        ).execute()
+
+        if not payment_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Payment not found"
+            )
+
+        # Delete payment (cascades to allocations via database)
+        PaymentService.delete_payment(payment_id)
+
+        return {"message": "Payment deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete payment: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete payment: {str(e)}"
+        )

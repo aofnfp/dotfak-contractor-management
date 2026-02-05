@@ -31,6 +31,7 @@ from backend.config import FRONTEND_URL, ENVIRONMENT, API_HOST, API_PORT
 from backend.routers import (
     auth_router,
     contractors_router,
+    clients_router,
     assignments_router,
     paystubs_router,
     payments_router,
@@ -52,7 +53,13 @@ app = FastAPI(
 # CORS configuration - use frontend URL from config
 allowed_origins = [FRONTEND_URL]
 if ENVIRONMENT == "development":
-    allowed_origins.append("http://localhost:3000")
+    allowed_origins.extend([
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:3004",
+    ])
 
 app.add_middleware(
     CORSMiddleware,
@@ -65,6 +72,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(contractors_router)
+app.include_router(clients_router)
 app.include_router(assignments_router)
 app.include_router(paystubs_router)
 app.include_router(payments_router)
@@ -251,11 +259,68 @@ async def get_paystubs(
         # Execute query with ordering and limit
         result = query.order("pay_period_begin", desc=True).limit(limit).execute()
 
-        return {
-            "success": True,
-            "count": len(result.data) if result.data else 0,
-            "paystubs": result.data if result.data else []
-        }
+        # Enrich paystubs with contractor and client details
+        enriched_paystubs = []
+        for paystub in result.data or []:
+            enriched = dict(paystub)
+
+            # Add contractor details
+            if paystub.get('contractor_assignment_id'):
+                assignment = supabase_admin_client.table("contractor_assignments").select(
+                    "contractor_id"
+                ).eq("id", paystub['contractor_assignment_id']).execute()
+
+                if assignment.data:
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name, contractor_code"
+                    ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                    if contractor.data:
+                        c = contractor.data[0]
+                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                        enriched['contractor_code'] = c['contractor_code']
+                    else:
+                        enriched['contractor_name'] = None
+                        enriched['contractor_code'] = None
+                else:
+                    enriched['contractor_name'] = None
+                    enriched['contractor_code'] = None
+            else:
+                enriched['contractor_name'] = None
+                enriched['contractor_code'] = None
+
+            # Add client details
+            if paystub.get('client_company_id'):
+                client = supabase_admin_client.table("client_companies").select(
+                    "name, code"
+                ).eq("id", paystub['client_company_id']).execute()
+
+                if client.data:
+                    enriched['client_name'] = client.data[0]['name']
+                    enriched['client_code'] = client.data[0]['code']
+                else:
+                    enriched['client_name'] = None
+                    enriched['client_code'] = None
+            else:
+                enriched['client_name'] = None
+                enriched['client_code'] = None
+
+            # Add uploader email
+            if paystub.get('uploaded_by'):
+                uploader = supabase_admin_client.table("contractors").select(
+                    "email"
+                ).eq("auth_user_id", paystub['uploaded_by']).execute()
+
+                if uploader.data:
+                    enriched['uploader_email'] = uploader.data[0]['email']
+                else:
+                    enriched['uploader_email'] = None
+            else:
+                enriched['uploader_email'] = None
+
+            enriched_paystubs.append(enriched)
+
+        return enriched_paystubs
 
     except Exception as e:
         raise HTTPException(
@@ -280,7 +345,74 @@ async def get_paystub(paystub_id: int):
                 detail="Paystub not found"
             )
 
-        return result.data[0]
+        paystub = result.data[0]
+        enriched = dict(paystub)
+
+        print(f"🔍 Enriching paystub {paystub_id}: assignment_id={paystub.get('contractor_assignment_id')}, client_id={paystub.get('client_company_id')}")
+
+        # Add contractor details
+        if paystub.get('contractor_assignment_id'):
+            assignment = supabase_admin_client.table("contractor_assignments").select(
+                "contractor_id"
+            ).eq("id", paystub['contractor_assignment_id']).execute()
+
+            print(f"  📋 Assignment: {assignment.data}")
+
+            if assignment.data:
+                contractor = supabase_admin_client.table("contractors").select(
+                    "first_name, last_name, contractor_code"
+                ).eq("id", assignment.data[0]['contractor_id']).execute()
+
+                print(f"  👤 Contractor: {contractor.data}")
+
+                if contractor.data:
+                    c = contractor.data[0]
+                    enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                    enriched['contractor_code'] = c['contractor_code']
+                    print(f"  ✅ Added contractor: {enriched['contractor_name']}")
+                else:
+                    enriched['contractor_name'] = None
+                    enriched['contractor_code'] = None
+            else:
+                enriched['contractor_name'] = None
+                enriched['contractor_code'] = None
+        else:
+            enriched['contractor_name'] = None
+            enriched['contractor_code'] = None
+
+        # Add client details
+        if paystub.get('client_company_id'):
+            client = supabase_admin_client.table("client_companies").select(
+                "name, code"
+            ).eq("id", paystub['client_company_id']).execute()
+
+            print(f"  🏢 Client: {client.data}")
+
+            if client.data:
+                enriched['client_name'] = client.data[0]['name']
+                enriched['client_code'] = client.data[0]['code']
+                print(f"  ✅ Added client: {enriched['client_name']}")
+            else:
+                enriched['client_name'] = None
+                enriched['client_code'] = None
+        else:
+            enriched['client_name'] = None
+            enriched['client_code'] = None
+
+        # Add uploader email
+        if paystub.get('uploaded_by'):
+            uploader = supabase_admin_client.table("contractors").select(
+                "email"
+            ).eq("auth_user_id", paystub['uploaded_by']).execute()
+
+            if uploader.data:
+                enriched['uploader_email'] = uploader.data[0]['email']
+            else:
+                enriched['uploader_email'] = None
+        else:
+            enriched['uploader_email'] = None
+
+        return enriched
 
     except HTTPException:
         raise

@@ -115,7 +115,10 @@ class PaystubService:
         contractor_assignment_id: Optional[str],
         client_company_id: str,
         file_hash: str,
-        uploaded_by: str
+        uploaded_by: str,
+        file_name: str = None,
+        file_size: int = None,
+        file_path: str = None
     ) -> Dict[str, Any]:
         """
         Save paystub to database.
@@ -126,6 +129,9 @@ class PaystubService:
             client_company_id: UUID of client company
             file_hash: SHA-256 hash of file
             uploaded_by: UUID of user who uploaded
+            file_name: Original filename of uploaded PDF
+            file_size: Size of file in bytes
+            file_path: Path where file is stored
 
         Returns:
             Saved paystub record
@@ -151,6 +157,9 @@ class PaystubService:
                 'client_company_id': client_company_id,
                 'file_hash': file_hash,
                 'uploaded_by': uploaded_by,
+                'file_name': file_name,
+                'file_size': file_size,
+                'file_path': file_path,
                 'paystub_data': paystub_data  # Store complete JSON
             }
 
