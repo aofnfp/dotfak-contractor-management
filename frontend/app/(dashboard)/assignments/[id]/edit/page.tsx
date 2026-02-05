@@ -19,10 +19,12 @@ import { useAssignment, useUpdateAssignment } from '@/lib/hooks/useAssignments'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 
+// Next.js 15: params are synchronous in Client Components
 interface EditAssignmentPageProps {
   params: {
     id: string
   }
+  searchParams?: { [key: string]: string | string[] | undefined }
 }
 
 export default function EditAssignmentPage({ params }: EditAssignmentPageProps) {
