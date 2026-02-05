@@ -35,7 +35,8 @@ from backend.routers import (
     assignments_router,
     paystubs_router,
     payments_router,
-    earnings_router
+    earnings_router,
+    dashboard_router
 )
 
 # Import tools
@@ -77,6 +78,7 @@ app.include_router(assignments_router)
 app.include_router(paystubs_router)
 app.include_router(payments_router)
 app.include_router(earnings_router)
+app.include_router(dashboard_router)
 
 
 # Pydantic models

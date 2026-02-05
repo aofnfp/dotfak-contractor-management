@@ -7,6 +7,7 @@ import { Toaster } from 'sonner'
 export const metadata: Metadata = {
   title: 'DotFak Contractor Management',
   description: 'Contractor management and profit-sharing platform for DotFak Group LLC',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=5',
 }
 
 export default function RootLayout({

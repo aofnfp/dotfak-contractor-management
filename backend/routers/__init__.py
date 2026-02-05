@@ -9,6 +9,7 @@ from backend.routers.assignments import router as assignments_router
 from backend.routers.paystubs import router as paystubs_router
 from backend.routers.payments import router as payments_router
 from backend.routers.earnings import router as earnings_router
+from backend.routers.dashboard import router as dashboard_router
 
 __all__ = [
     "auth_router",
@@ -17,5 +18,6 @@ __all__ = [
     "assignments_router",
     "paystubs_router",
     "payments_router",
-    "earnings_router"
+    "earnings_router",
+    "dashboard_router"
 ]

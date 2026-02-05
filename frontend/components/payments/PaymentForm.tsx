@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -81,6 +81,19 @@ export function PaymentForm() {
     selectedContractorId,
     debouncedAmount
   )
+
+  // Memoize summary calculations to prevent recalculation on every render
+  const summary = useMemo(() => {
+    if (!allocationPreview || allocationPreview.length === 0) {
+      return { totalPending: 0, willAllocate: 0, remaining: 0 }
+    }
+
+    return {
+      totalPending: allocationPreview.reduce((sum, item) => sum + item.current_pending, 0),
+      willAllocate: allocationPreview.reduce((sum, item) => sum + item.will_allocate, 0),
+      remaining: allocationPreview.reduce((sum, item) => sum + item.new_pending, 0),
+    }
+  }, [allocationPreview])
 
   const onSubmit = async (data: PaymentFormData) => {
     await createPayment.mutateAsync(data)
@@ -290,31 +303,25 @@ export function PaymentForm() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Pending:</span>
                     <span className="font-mono font-medium">
-                      {formatCurrency(
-                        allocationPreview.reduce((sum, item) => sum + item.current_pending, 0)
-                      )}
+                      {formatCurrency(summary.totalPending)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Will Allocate:</span>
                     <span className="font-mono font-bold text-cta">
-                      {formatCurrency(
-                        allocationPreview.reduce((sum, item) => sum + item.will_allocate, 0)
-                      )}
+                      {formatCurrency(summary.willAllocate)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Remaining After:</span>
                     <span
                       className={`font-mono font-medium ${
-                        allocationPreview.reduce((sum, item) => sum + item.new_pending, 0) > 0
+                        summary.remaining > 0
                           ? 'text-destructive'
                           : 'text-cta'
                       }`}
                     >
-                      {formatCurrency(
-                        allocationPreview.reduce((sum, item) => sum + item.new_pending, 0)
-                      )}
+                      {formatCurrency(summary.remaining)}
                     </span>
                   </div>
                 </div>

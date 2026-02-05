@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,12 @@ const getPaymentStatusBadge = (status: PaymentStatus) => {
 }
 
 export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsTableProps) {
+  // Memoize totals calculation to prevent recalculation on every render
+  const totals = useMemo(() => ({
+    totalEarnings: earnings.reduce((sum, e) => sum + e.contractor_total_earnings, 0),
+    totalPending: earnings.reduce((sum, e) => sum + e.amount_pending, 0),
+  }), [earnings])
+
   if (earnings.length === 0) {
     return (
       <Card>
@@ -199,17 +205,13 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
               <div>
                 <span className="text-muted-foreground">Total Earnings: </span>
                 <span className="font-bold text-cta font-mono">
-                  {formatCurrency(
-                    earnings.reduce((sum, e) => sum + e.contractor_total_earnings, 0)
-                  )}
+                  {formatCurrency(totals.totalEarnings)}
                 </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Total Pending: </span>
                 <span className="font-bold text-destructive font-mono">
-                  {formatCurrency(
-                    earnings.reduce((sum, e) => sum + e.amount_pending, 0)
-                  )}
+                  {formatCurrency(totals.totalPending)}
                 </span>
               </div>
             </div>

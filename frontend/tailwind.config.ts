@@ -21,7 +21,7 @@ const config: Config = {
         foreground: '#F8FAFC',
         muted: {
           DEFAULT: '#1E293B',
-          foreground: '#94A3B8',
+          foreground: '#A8B5CC', // Updated for WCAG AA compliance (4.5:1 contrast ratio)
         },
         accent: {
           DEFAULT: '#22C55E',
