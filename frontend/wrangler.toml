@@ -1,7 +1,7 @@
 name = "dotfak-contractor-management"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".open-next/worker"
+pages_build_output_dir = ".open-next/server-functions/default"
 
 [vars]
 NEXT_PUBLIC_API_URL = "https://dotfak-contractor-management.onrender.com"
