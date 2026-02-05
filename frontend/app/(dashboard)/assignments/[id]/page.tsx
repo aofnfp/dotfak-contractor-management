@@ -1,5 +1,6 @@
 'use client'
 
+import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, ArrowLeft, User, Building2, DollarSign, Calendar, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,25 +10,26 @@ import { useAssignment, useDeleteAssignment } from '@/lib/hooks/useAssignments'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface AssignmentDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function AssignmentDetailPage({ params }: AssignmentDetailPageProps) {
+  const { id } = use(params)
   const router = useRouter()
-  const { data: assignment, isLoading, error } = useAssignment(params.id)
+  const { data: assignment, isLoading, error } = useAssignment(id)
   const deleteAssignment = useDeleteAssignment()
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) {
-      await deleteAssignment.mutateAsync(params.id)
+      await deleteAssignment.mutateAsync(id)
       router.push('/assignments')
     }
   }
 
   const handleEdit = () => {
-    router.push(`/assignments/${params.id}/edit`)
+    router.push(`/assignments/${id}/edit`)
   }
 
   if (isLoading) {

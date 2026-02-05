@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Remove output: 'export' - it breaks server-side features
+
   images: {
-    unoptimized: true, // Cloudflare handles image optimization
     remotePatterns: [
       {
         protocol: 'https',
@@ -9,6 +10,7 @@ const nextConfig = {
       },
     ],
   },
+
   // Environment variables validation
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,

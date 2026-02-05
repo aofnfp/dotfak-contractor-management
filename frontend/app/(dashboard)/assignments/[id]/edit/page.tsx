@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,17 +19,20 @@ import { useAssignment, useUpdateAssignment } from '@/lib/hooks/useAssignments'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 
-// Next.js 15: params are synchronous in Client Components
+// Next.js 15: params are now Promise in all Page components
 interface EditAssignmentPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
-  searchParams?: { [key: string]: string | string[] | undefined }
+  }>
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default function EditAssignmentPage({ params }: EditAssignmentPageProps) {
+  // Unwrap params Promise using React 19's use() hook
+  const { id } = use(params)
+
   const router = useRouter()
-  const { data: assignment, isLoading: assignmentLoading } = useAssignment(params.id)
+  const { data: assignment, isLoading: assignmentLoading } = useAssignment(id)
   const updateAssignment = useUpdateAssignment()
   const { data: contractors } = useContractors()
   const { data: clients } = useClients()
@@ -72,7 +75,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
 
     try {
       await updateAssignment.mutateAsync({
-        id: params.id,
+        id: id,
         data: {
           client_employee_id: formData.client_employee_id || undefined,
           rate_type: formData.rate_type,
@@ -86,7 +89,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
         },
       })
 
-      router.push(`/assignments/${params.id}`)
+      router.push(`/assignments/${id}`)
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -129,7 +132,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/assignments/${params.id}`)}
+              onClick={() => router.push(`/assignments/${id}`)}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -380,7 +383,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(`/assignments/${params.id}`)}
+            onClick={() => router.push(`/assignments/${id}`)}
             className="border-border"
           >
             Cancel

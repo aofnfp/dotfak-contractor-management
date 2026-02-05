@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cloudflare": "next build && node scripts/prepare-cloudflare.js",
+    "build:worker": "open-next build",
+    "preview": "wrangler pages dev .open-next/worker",
+    "deploy": "wrangler deploy",
     "start": "next start",
     "lint": "next lint"
   },
@@ -25,9 +27,9 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.356.0",
-    "next": "^14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "15.5.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-dropzone": "^14.2.3",
     "react-hook-form": "^7.71.1",
     "sonner": "^1.7.4",
@@ -37,12 +39,13 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.16.3",
     "@types/node": "^20.11.24",
-    "@types/react": "^18.2.61",
-    "@types/react-dom": "^18.2.19",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.18",
     "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.0",
+    "eslint-config-next": "15.5.10",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "wrangler": "^4.63.0"

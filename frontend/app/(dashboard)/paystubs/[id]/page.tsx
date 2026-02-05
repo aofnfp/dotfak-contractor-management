@@ -1,5 +1,6 @@
 'use client'
 
+import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trash2, FileText, User, Building2, Calendar, DollarSign, Clock, AlertCircle, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,19 +18,20 @@ import { usePaystub, useDeletePaystub } from '@/lib/hooks/usePaystubs'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface PaystubDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
+  const { id } = use(params)
   const router = useRouter()
-  const { data: paystub, isLoading, error } = usePaystub(params.id)
+  const { data: paystub, isLoading, error } = usePaystub(id)
   const deletePaystub = useDeletePaystub()
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this paystub? This action cannot be undone.')) {
-      await deletePaystub.mutateAsync(params.id)
+      await deletePaystub.mutateAsync(id)
       router.push('/paystubs')
     }
   }

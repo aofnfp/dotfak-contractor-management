@@ -21,6 +21,7 @@ pip-delete-this-directory.txt
 frontend/node_modules/
 frontend/.next/
 frontend/.next-cloudflare/
+frontend/.open-next/
 frontend/out/
 frontend/build/
 frontend/.env.local
