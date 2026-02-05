@@ -7,7 +7,7 @@
     "build": "next build",
     "build:worker": "open-next build",
     "preview": "wrangler pages dev .open-next/worker",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler pages deploy .open-next/worker --project-name=dotfak-contractor-management --no-bundle",
     "start": "next start",
     "lint": "next lint"
   },
