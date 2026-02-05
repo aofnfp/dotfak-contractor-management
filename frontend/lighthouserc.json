@@ -1,0 +1,60 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "npm run build && npm run start",
+      "startServerReadyPattern": "ready on",
+      "url": [
+        "http://localhost:3000/login",
+        "http://localhost:3000/dashboard",
+        "http://localhost:3000/contractors",
+        "http://localhost:3000/earnings",
+        "http://localhost:3000/payments"
+      ],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "preset": "lighthouse:recommended",
+      "assertions": {
+        "categories:performance": ["error", {"minScore": 0.9}],
+        "categories:accessibility": ["error", {"minScore": 0.95}],
+        "categories:best-practices": ["error", {"minScore": 0.9}],
+        "categories:seo": ["warn", {"minScore": 0.8}],
+        "first-contentful-paint": ["warn", {"maxNumericValue": 2000}],
+        "largest-contentful-paint": ["warn", {"maxNumericValue": 2500}],
+        "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
+        "total-blocking-time": ["warn", {"maxNumericValue": 300}],
+        "interactive": ["warn", {"maxNumericValue": 3500}],
+        "speed-index": ["warn", {"maxNumericValue": 3000}],
+        "uses-text-compression": "error",
+        "uses-responsive-images": "warn",
+        "offscreen-images": "warn",
+        "render-blocking-resources": "warn",
+        "unminified-css": "error",
+        "unminified-javascript": "error",
+        "unused-css-rules": "warn",
+        "unused-javascript": "warn",
+        "modern-image-formats": "warn",
+        "uses-optimized-images": "warn",
+        "uses-webp-images": "warn",
+        "efficient-animated-content": "warn",
+        "duplicated-javascript": "error",
+        "legacy-javascript": "warn",
+        "font-display": "warn",
+        "aria-required-attr": "error",
+        "aria-valid-attr": "error",
+        "button-name": "error",
+        "color-contrast": "error",
+        "duplicate-id": "error",
+        "html-has-lang": "error",
+        "image-alt": "error",
+        "label": "error",
+        "link-name": "error",
+        "meta-viewport": "error",
+        "tap-targets": "error"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

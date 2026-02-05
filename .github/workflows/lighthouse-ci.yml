@@ -1,0 +1,97 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+jobs:
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.13.x
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: frontend/.lighthouseci/
+          retention-days: 30
+
+      - name: Comment PR with Lighthouse results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const manifestPath = 'frontend/.lighthouseci/manifest.json';
+
+            if (!fs.existsSync(manifestPath)) {
+              console.log('Manifest file not found, skipping comment');
+              return;
+            }
+
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            const results = manifest[0];
+
+            const comment = `## 🔦 Lighthouse Performance Report
+
+| Metric | Score |
+|--------|-------|
+| 🎯 Performance | ${Math.round(results.summary.performance * 100)}% |
+| ♿ Accessibility | ${Math.round(results.summary.accessibility * 100)}% |
+| 🎨 Best Practices | ${Math.round(results.summary['best-practices'] * 100)}% |
+| 🔍 SEO | ${Math.round(results.summary.seo * 100)}% |
+
+### Core Web Vitals
+- **FCP**: ${results.summary['first-contentful-paint']}ms
+- **LCP**: ${results.summary['largest-contentful-paint']}ms
+- **TBT**: ${results.summary['total-blocking-time']}ms
+- **CLS**: ${results.summary['cumulative-layout-shift']}
+
+[📊 View detailed report](${results.url})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
