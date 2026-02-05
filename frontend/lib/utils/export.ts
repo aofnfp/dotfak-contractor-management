@@ -30,8 +30,8 @@ export function jsonToCSV<T extends Record<string, any>>(
         }
 
         // Handle dates
-        if (value instanceof Date) {
-          return `"${value.toISOString().split('T')[0]}"`
+        if (value && typeof value === 'object' && 'toISOString' in value) {
+          return `"${(value as Date).toISOString().split('T')[0]}"`
         }
 
         // Handle numbers

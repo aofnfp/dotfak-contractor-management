@@ -46,7 +46,7 @@ export default function EarningsPage() {
 
     const exportData = earnings.map(earning => ({
       contractor_code: earning.contractor_code || '',
-      contractor_name: `${earning.contractor_first_name || ''} ${earning.contractor_last_name || ''}`.trim(),
+      contractor_name: earning.contractor_name || '',
       client_name: earning.client_name || '',
       pay_period_begin: earning.pay_period_begin || '',
       pay_period_end: earning.pay_period_end || '',

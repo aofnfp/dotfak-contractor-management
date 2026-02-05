@@ -27,7 +27,7 @@ export default function PaymentsPage() {
     const exportData = payments.map(payment => ({
       payment_date: payment.payment_date || '',
       contractor_code: payment.contractor_code || '',
-      contractor_name: `${payment.contractor_first_name || ''} ${payment.contractor_last_name || ''}`.trim(),
+      contractor_name: payment.contractor_name || '',
       amount: payment.amount || 0,
       payment_method: payment.payment_method || '',
       transaction_reference: payment.transaction_reference || '',
