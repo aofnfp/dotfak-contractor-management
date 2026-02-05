@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from './providers'
+import { RootErrorBoundary } from '@/components/common/RootErrorBoundary'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body>
         <Providers>
-          {children}
+          <RootErrorBoundary>
+            {children}
+          </RootErrorBoundary>
           <Toaster position="top-right" richColors />
         </Providers>
       </body>

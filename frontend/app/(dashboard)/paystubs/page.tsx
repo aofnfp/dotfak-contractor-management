@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TableSkeleton } from '@/components/ui/table-skeleton'
+import { Pagination } from '@/components/ui/pagination'
 import { usePaystubs } from '@/lib/hooks/usePaystubs'
 
 // Lazy load heavy table component
@@ -18,16 +19,20 @@ const PaystubsTable = dynamic(
   }
 )
 
+const ITEMS_PER_PAGE = 20
+
 export default function PaystubsPage() {
   const router = useRouter()
   const { data: paystubs, isLoading, error } = usePaystubs()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Debounce search query (300ms delay)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setSearchQuery(searchInput)
+      setCurrentPage(1) // Reset to first page on search
     }, 300)
 
     return () => clearTimeout(timeoutId)
@@ -69,6 +74,14 @@ export default function PaystubsPage() {
       unmatched
     }
   }, [paystubs])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredPaystubs.length / ITEMS_PER_PAGE)
+  const paginatedPaystubs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    return filteredPaystubs.slice(startIndex, endIndex)
+  }, [filteredPaystubs, currentPage])
 
   return (
     <div className="flex-1 space-y-6 p-8">
@@ -162,10 +175,21 @@ export default function PaystubsPage() {
               Failed to load paystubs. Please try again.
             </div>
           ) : (
-            <PaystubsTable
-              paystubs={filteredPaystubs}
-              isLoading={isLoading}
-            />
+            <>
+              <PaystubsTable
+                paystubs={paginatedPaystubs}
+                isLoading={isLoading}
+              />
+              {filteredPaystubs.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  totalItems={filteredPaystubs.length}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TableSkeleton } from '@/components/ui/table-skeleton'
+import { Pagination } from '@/components/ui/pagination'
 import { useContractors } from '@/lib/hooks/useContractors'
 
 // Lazy load heavy components
@@ -21,16 +22,20 @@ const AddContractorDialog = dynamic(
   () => import('@/components/contractors/AddContractorDialog').then(m => ({ default: m.AddContractorDialog }))
 )
 
+const ITEMS_PER_PAGE = 20
+
 export default function ContractorsPage() {
   const { data: contractors, isLoading, error } = useContractors()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Debounce search query (300ms delay)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setSearchQuery(searchInput)
+      setCurrentPage(1) // Reset to first page on search
     }, 300)
 
     return () => clearTimeout(timeoutId)
@@ -61,6 +66,14 @@ export default function ContractorsPage() {
       inactive: contractors.length - active
     }
   }, [contractors])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredContractors.length / ITEMS_PER_PAGE)
+  const paginatedContractors = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    return filteredContractors.slice(startIndex, endIndex)
+  }, [filteredContractors, currentPage])
 
   return (
     <div className="flex-1 space-y-6 p-8">
@@ -151,10 +164,21 @@ export default function ContractorsPage() {
               Failed to load contractors. Please try again.
             </div>
           ) : (
-            <ContractorsTable
-              contractors={filteredContractors}
-              isLoading={isLoading}
-            />
+            <>
+              <ContractorsTable
+                contractors={paginatedContractors}
+                isLoading={isLoading}
+              />
+              {filteredContractors.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  totalItems={filteredContractors.length}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>
