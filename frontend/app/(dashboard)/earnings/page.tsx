@@ -15,8 +15,10 @@ import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useEarnings, useEarningsSummary } from '@/lib/hooks/useEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
-import { formatCurrency } from '@/lib/utils'
-import { DollarSign, CheckCircle2, AlertCircle } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { exportToCSV } from '@/lib/utils/export'
+import { DollarSign, CheckCircle2, AlertCircle, Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { PaymentStatus } from '@/lib/types/earning'
 
 export default function EarningsPage() {
@@ -36,14 +38,64 @@ export default function EarningsPage() {
   const { data: contractors } = useContractors()
   const { data: clients } = useClients()
 
+  // Export earnings to CSV
+  const handleExport = () => {
+    if (!earnings || earnings.length === 0) {
+      return
+    }
+
+    const exportData = earnings.map(earning => ({
+      contractor_code: earning.contractor_code || '',
+      contractor_name: `${earning.contractor_first_name || ''} ${earning.contractor_last_name || ''}`.trim(),
+      client_name: earning.client_name || '',
+      pay_period_begin: earning.pay_period_begin || '',
+      pay_period_end: earning.pay_period_end || '',
+      hours_worked: earning.client_total_hours || 0,
+      client_gross_pay: earning.client_gross_pay || 0,
+      contractor_earnings: earning.contractor_total_earnings || 0,
+      amount_paid: earning.amount_paid || 0,
+      amount_pending: earning.amount_pending || 0,
+      payment_status: earning.payment_status || 'unpaid',
+    }))
+
+    exportToCSV(
+      exportData,
+      [
+        { key: 'contractor_code', label: 'Contractor Code' },
+        { key: 'contractor_name', label: 'Contractor Name' },
+        { key: 'client_name', label: 'Client Company' },
+        { key: 'pay_period_begin', label: 'Period Start' },
+        { key: 'pay_period_end', label: 'Period End' },
+        { key: 'hours_worked', label: 'Hours Worked' },
+        { key: 'client_gross_pay', label: 'Client Gross Pay' },
+        { key: 'contractor_earnings', label: 'Contractor Earnings' },
+        { key: 'amount_paid', label: 'Amount Paid' },
+        { key: 'amount_pending', label: 'Amount Pending' },
+        { key: 'payment_status', label: 'Payment Status' },
+      ],
+      'earnings_export'
+    )
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Earnings</h1>
-        <p className="text-muted-foreground mt-2">
-          View and manage contractor earnings from paystubs
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Earnings</h1>
+          <p className="text-muted-foreground mt-2">
+            View and manage contractor earnings from paystubs
+          </p>
+        </div>
+        <Button
+          onClick={handleExport}
+          disabled={!earnings || earnings.length === 0 || isLoading}
+          variant="outline"
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
       </div>
 
       {/* Summary Stats */}

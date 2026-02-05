@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PaymentTable } from '@/components/payments/PaymentTable'
 import { usePayments, usePaymentsSummary } from '@/lib/hooks/usePayments'
-import { formatCurrency } from '@/lib/utils'
-import { DollarSign, CreditCard, TrendingUp } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { exportToCSV } from '@/lib/utils/export'
+import { DollarSign, CreditCard, TrendingUp, Download } from 'lucide-react'
 
 /**
  * Payments List Page
@@ -16,6 +17,37 @@ import { DollarSign, CreditCard, TrendingUp } from 'lucide-react'
 export default function PaymentsPage() {
   const { data: payments, isLoading, error } = usePayments()
   const { data: summary, isLoading: summaryLoading } = usePaymentsSummary()
+
+  // Export payments to CSV
+  const handleExport = () => {
+    if (!payments || payments.length === 0) {
+      return
+    }
+
+    const exportData = payments.map(payment => ({
+      payment_date: payment.payment_date || '',
+      contractor_code: payment.contractor_code || '',
+      contractor_name: `${payment.contractor_first_name || ''} ${payment.contractor_last_name || ''}`.trim(),
+      amount: payment.amount || 0,
+      payment_method: payment.payment_method || '',
+      transaction_reference: payment.transaction_reference || '',
+      notes: payment.notes || '',
+    }))
+
+    exportToCSV(
+      exportData,
+      [
+        { key: 'payment_date', label: 'Payment Date' },
+        { key: 'contractor_code', label: 'Contractor Code' },
+        { key: 'contractor_name', label: 'Contractor Name' },
+        { key: 'amount', label: 'Amount' },
+        { key: 'payment_method', label: 'Payment Method' },
+        { key: 'transaction_reference', label: 'Transaction Reference' },
+        { key: 'notes', label: 'Notes' },
+      ],
+      'payments_export'
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -27,12 +59,23 @@ export default function PaymentsPage() {
             View and manage contractor payment records
           </p>
         </div>
-        <Link href="/payments/new">
-          <Button className="bg-cta hover:bg-cta/90">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Record Payment
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExport}
+            disabled={!payments || payments.length === 0 || isLoading}
+            variant="outline"
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
           </Button>
-        </Link>
+          <Link href="/payments/new">
+            <Button className="bg-cta hover:bg-cta/90">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Record Payment
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Summary Stats */}
