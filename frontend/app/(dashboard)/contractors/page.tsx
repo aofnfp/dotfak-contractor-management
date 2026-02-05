@@ -1,22 +1,19 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Plus, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { useContractors } from '@/lib/hooks/useContractors'
 
 // Lazy load heavy components
 const ContractorsTable = dynamic(
   () => import('@/components/contractors/ContractorsTable').then(m => ({ default: m.ContractorsTable })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-      </div>
-    )
+    loading: () => <TableSkeleton rows={5} columns={5} />
   }
 )
 
@@ -26,8 +23,18 @@ const AddContractorDialog = dynamic(
 
 export default function ContractorsPage() {
   const { data: contractors, isLoading, error } = useContractors()
+  const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAddDialog, setShowAddDialog] = useState(false)
+
+  // Debounce search query (300ms delay)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchQuery(searchInput)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput])
 
   // Filter contractors based on search query (memoized to prevent recalculation)
   const filteredContractors = useMemo(() => {
@@ -121,8 +128,8 @@ export default function ContractorsPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by name, code, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9 bg-secondary border-border"
               />
             </div>

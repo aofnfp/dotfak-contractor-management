@@ -1,30 +1,37 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Upload, Search, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { usePaystubs } from '@/lib/hooks/usePaystubs'
 
 // Lazy load heavy table component
 const PaystubsTable = dynamic(
   () => import('@/components/paystubs/PaystubsTable').then(m => ({ default: m.PaystubsTable })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-      </div>
-    )
+    loading: () => <TableSkeleton rows={5} columns={6} />
   }
 )
 
 export default function PaystubsPage() {
   const router = useRouter()
   const { data: paystubs, isLoading, error } = usePaystubs()
+  const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Debounce search query (300ms delay)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchQuery(searchInput)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput])
 
   // Filter paystubs based on search query (memoized to prevent recalculation)
   const filteredPaystubs = useMemo(() => {
@@ -132,8 +139,8 @@ export default function PaystubsPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by contractor, client, or filename..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9 bg-secondary border-border"
               />
             </div>
