@@ -3,6 +3,9 @@ import type {
   Paystub,
   PaystubWithDetails,
   UploadPaystubResponse,
+  CheckAccountsResponse,
+  AccountAssignmentRequest,
+  AccountAssignmentResponse,
 } from '@/lib/types/paystub'
 
 export const paystubsApi = {
@@ -91,6 +94,25 @@ export const paystubsApi = {
     const response = await apiClient.patch(`/paystubs/${id}/assign`, {
       contractor_assignment_id: assignmentId,
     })
+    return response.data
+  },
+
+  /**
+   * Check if paystub has unassigned bank accounts
+   */
+  checkAccounts: async (id: string): Promise<CheckAccountsResponse> => {
+    const response = await apiClient.get(`/paystubs/${id}/check-accounts`)
+    return response.data
+  },
+
+  /**
+   * Assign bank accounts from a paystub
+   */
+  assignAccounts: async (
+    id: string,
+    request: AccountAssignmentRequest
+  ): Promise<AccountAssignmentResponse> => {
+    const response = await apiClient.post(`/paystubs/${id}/assign-accounts`, request)
     return response.data
   },
 }

@@ -151,3 +151,36 @@ export interface UploadPaystubResponse {
   }>
   errors?: string[]
 }
+
+// Bank Account Tracking Types
+export interface UnassignedAccountInfo {
+  account_last4: string
+  bank_name: string
+  account_name?: string
+  amount: number
+  currency: string
+}
+
+export interface AccountAssignmentItem {
+  account_last4: string
+  owner_type: 'contractor' | 'admin'
+  owner_id: string
+}
+
+export interface AccountAssignmentRequest {
+  assignments: AccountAssignmentItem[]
+}
+
+export interface AccountAssignmentResponse {
+  paystub_id: number
+  assigned_count: number
+  success: boolean
+}
+
+export interface CheckAccountsResponse {
+  paystub_id: number
+  total_accounts: number
+  assigned_accounts: number
+  unassigned_accounts: UnassignedAccountInfo[]
+  needs_assignment: boolean
+}

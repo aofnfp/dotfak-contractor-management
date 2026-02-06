@@ -13,6 +13,8 @@ from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 
+from backend.config import supabase_admin_client
+
 logger = logging.getLogger(__name__)
 
 
@@ -170,6 +172,108 @@ class EarningsCalculator:
 
 
     @staticmethod
+    def calculate_earnings_with_dual_tracking(
+        paystub_id: int,
+        paystub_data: Dict[str, Any],
+        assignment: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Calculate earnings with DUAL TRACKING: expected (calculated) vs actual (from bank accounts).
+
+        This method:
+        1. Calculates EXPECTED earnings using hours × rate + bonuses
+        2. Gets ACTUAL payments from paystub_account_splits (bank account deposits)
+        3. Calculates VARIANCE (actual - expected)
+        4. Determines variance status (correct, overpaid, underpaid)
+
+        Args:
+            paystub_id: ID of the paystub
+            paystub_data: Complete paystub data (from parser)
+            assignment: Contractor assignment with rate structure
+
+        Returns:
+            Dictionary with dual tracking earnings (expected + actual + variance)
+        """
+        try:
+            # Step 1: Calculate EXPECTED earnings using existing logic
+            expected_earnings = EarningsCalculator.calculate_earnings(paystub_data, assignment)
+
+            # Step 2: Get ACTUAL payments from paystub_account_splits
+            # Query paystub_account_splits joined with bank_accounts
+            splits_result = supabase_admin_client.table("paystub_account_splits").select(
+                "*, bank_accounts(*)"
+            ).eq("paystub_id", paystub_id).execute()
+
+            contractor_actual = Decimal('0.00')
+            admin_actual = Decimal('0.00')
+
+            if splits_result.data:
+                for split in splits_result.data:
+                    bank_account = split.get('bank_accounts', {})
+                    owner_type = bank_account.get('owner_type')
+                    amount = Decimal(str(split.get('amount', 0)))
+
+                    if owner_type == 'contractor':
+                        contractor_actual += amount
+                    elif owner_type == 'admin':
+                        admin_actual += amount
+
+            # Step 3: Calculate VARIANCE
+            expected_total = Decimal(str(expected_earnings['contractor_total_earnings']))
+            payment_variance = contractor_actual - expected_total
+
+            # Step 4: Determine variance status (allow 1 cent tolerance for rounding)
+            if abs(payment_variance) <= Decimal('0.01'):
+                variance_status = 'correct'
+            elif payment_variance > Decimal('0.01'):
+                variance_status = 'overpaid'
+            else:
+                variance_status = 'underpaid'
+
+            # Log variance if significant
+            if variance_status != 'correct':
+                logger.warning(
+                    f"Payment variance detected for paystub {paystub_id}: "
+                    f"Expected ${expected_total}, Actual ${contractor_actual}, "
+                    f"Variance ${payment_variance} ({variance_status})"
+                )
+
+            # Step 5: Build dual tracking earnings response
+            dual_tracking_earnings = {
+                # Expected earnings (calculated from rate)
+                'expected_earnings': float(expected_total),
+                'contractor_regular_earnings': expected_earnings['contractor_regular_earnings'],
+                'contractor_bonus_share': expected_earnings['contractor_bonus_share'],
+
+                # Actual payments (from bank account deposits)
+                'actual_payments': float(contractor_actual),
+                'admin_actual_payments': float(admin_actual),
+
+                # Variance tracking
+                'payment_variance': float(payment_variance),
+                'variance_status': variance_status,
+
+                # Other fields (from expected calculation)
+                'client_gross_pay': expected_earnings['client_gross_pay'],
+                'client_total_hours': expected_earnings['client_total_hours'],
+                'company_margin': expected_earnings['company_margin'],  # Based on expected
+
+                # Payment status (use actual for pending)
+                'payment_status': 'unpaid',
+                'amount_paid': 0.00,
+                'amount_pending': float(contractor_actual),  # Use actual, not expected
+
+                # Metadata
+                'calculation_details': expected_earnings['calculation_details']
+            }
+
+            return dual_tracking_earnings
+
+        except Exception as e:
+            logger.error(f"Dual tracking calculation failed for paystub {paystub_id}: {str(e)}")
+            raise
+
+    @staticmethod
     def validate_earnings(earnings: Dict[str, Any]) -> bool:
         """
         Validate calculated earnings for sanity checks.
@@ -220,4 +324,30 @@ def calculate_contractor_earnings(
     calculator = EarningsCalculator()
     earnings = calculator.calculate_earnings(paystub_data, assignment)
     calculator.validate_earnings(earnings)
+    return earnings
+
+
+def calculate_contractor_earnings_with_dual_tracking(
+    paystub_id: int,
+    paystub_data: Dict[str, Any],
+    assignment: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Convenience function to calculate earnings with dual tracking (expected vs actual).
+
+    This function:
+    1. Calculates expected earnings from hours × rate
+    2. Gets actual payments from bank account deposits
+    3. Calculates variance and flags discrepancies
+
+    Args:
+        paystub_id: ID of the paystub
+        paystub_data: Complete paystub data
+        assignment: Contractor assignment with rate structure
+
+    Returns:
+        Dual tracking earnings breakdown with variance status
+    """
+    calculator = EarningsCalculator()
+    earnings = calculator.calculate_earnings_with_dual_tracking(paystub_id, paystub_data, assignment)
     return earnings

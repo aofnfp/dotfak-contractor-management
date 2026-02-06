@@ -26,6 +26,22 @@ from backend.schemas.payment import (
     AllocationRequest,
 )
 
+from backend.schemas.bank_account import (
+    BankAccountBase,
+    BankAccountCreate,
+    BankAccountUpdate,
+    BankAccountResponse,
+    UnassignedAccountInfo,
+    AccountAssignmentItem,
+    AccountAssignmentRequest,
+    AccountAssignmentResponse,
+    CheckAccountsResponse,
+    PaystubAccountSplitBase,
+    PaystubAccountSplitCreate,
+    PaystubAccountSplitResponse,
+    PaystubAccountSplitWithDetails,
+)
+
 __all__ = [
     "ContractorBase",
     "ContractorCreate",
@@ -45,4 +61,17 @@ __all__ = [
     "EarningsSummary",
     "AllocationResponse",
     "AllocationRequest",
+    "BankAccountBase",
+    "BankAccountCreate",
+    "BankAccountUpdate",
+    "BankAccountResponse",
+    "UnassignedAccountInfo",
+    "AccountAssignmentItem",
+    "AccountAssignmentRequest",
+    "AccountAssignmentResponse",
+    "CheckAccountsResponse",
+    "PaystubAccountSplitBase",
+    "PaystubAccountSplitCreate",
+    "PaystubAccountSplitResponse",
+    "PaystubAccountSplitWithDetails",
 ]

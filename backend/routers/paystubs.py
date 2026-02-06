@@ -18,7 +18,12 @@ from parsers import get_parser, AVAILABLE_PARSERS
 
 from backend.config import supabase_admin_client
 from backend.dependencies import require_admin
-from backend.services import PaystubService, calculate_contractor_earnings
+from backend.services import PaystubService, calculate_contractor_earnings, BankAccountService
+from backend.schemas import (
+    CheckAccountsResponse,
+    AccountAssignmentRequest,
+    AccountAssignmentResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +292,92 @@ async def upload_paystub_with_earnings(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process paystub: {str(e)}"
+        )
+
+
+@router.get("/{paystub_id}/check-accounts", response_model=CheckAccountsResponse)
+async def check_paystub_accounts(
+    paystub_id: int,
+    user: dict = Depends(require_admin)
+):
+    """
+    Check if paystub has unassigned bank accounts (admin only).
+
+    This endpoint:
+    1. Gets the paystub's payment_info from paystub_data
+    2. For each account, checks if it exists in bank_accounts table
+    3. Auto-assigns existing accounts by creating paystub_account_splits
+    4. Returns list of NEW accounts that need manual assignment
+
+    Args:
+        paystub_id: ID of the paystub to check
+        user: Current user (admin)
+
+    Returns:
+        CheckAccountsResponse with unassigned accounts list
+    """
+    try:
+        result = BankAccountService.check_paystub_accounts(paystub_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error checking accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check accounts: {str(e)}"
+        )
+
+
+@router.post("/{paystub_id}/assign-accounts", response_model=AccountAssignmentResponse)
+async def assign_paystub_accounts(
+    paystub_id: int,
+    assignment_request: AccountAssignmentRequest,
+    user: dict = Depends(require_admin)
+):
+    """
+    Assign NEW bank accounts from a paystub (admin only).
+
+    This endpoint is called AFTER upload when new accounts are detected.
+    It:
+    1. Creates bank_accounts entries for new accounts
+    2. Creates paystub_account_splits entries linking paystub to accounts
+    3. Returns success with count of assigned accounts
+
+    Args:
+        paystub_id: ID of the paystub
+        assignment_request: List of account assignments
+        user: Current user (admin)
+
+    Returns:
+        AccountAssignmentResponse with success status
+    """
+    try:
+        # Convert Pydantic model to list of dicts
+        assignments = [
+            {
+                "account_last4": item.account_last4,
+                "owner_type": item.owner_type,
+                "owner_id": str(item.owner_id)
+            }
+            for item in assignment_request.assignments
+        ]
+
+        result = BankAccountService.assign_accounts(paystub_id, assignments)
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error assigning accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to assign accounts: {str(e)}"
         )
 
 

@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { PaystubUploader } from '@/components/paystubs/PaystubUploader'
 import { useClients } from '@/lib/hooks/useClients'
 import { useAssignments } from '@/lib/hooks/useAssignments'
+import { paystubsApi } from '@/lib/api/paystubs'
 import type { UploadPaystubResponse } from '@/lib/types/paystub'
 
 export default function UploadPaystubPage() {
@@ -34,7 +35,28 @@ export default function UploadPaystubPage() {
     ? activeAssignments.filter((a) => a.client_company_id === selectedClientId)
     : activeAssignments
 
-  const handleUploadSuccess = (response: UploadPaystubResponse) => {
+  const handleUploadSuccess = async (response: UploadPaystubResponse) => {
+    // Check if any uploaded paystubs have unassigned accounts
+    if (response.paystubs && response.paystubs.length > 0) {
+      // Check the first uploaded paystub for unassigned accounts
+      const firstPaystub = response.paystubs[0]
+
+      try {
+        const checkResult = await paystubsApi.checkAccounts(firstPaystub.id)
+
+        if (checkResult.needs_assignment) {
+          // Redirect to assignment page for this paystub
+          setTimeout(() => {
+            router.push(`/paystubs/${firstPaystub.id}/assign`)
+          }, 1500)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to check accounts:', error)
+        // Continue to paystubs list on error
+      }
+    }
+
     // Navigate to paystubs list page to see all uploaded paystubs
     setTimeout(() => {
       router.push('/paystubs')
