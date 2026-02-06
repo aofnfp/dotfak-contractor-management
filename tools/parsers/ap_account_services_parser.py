@@ -392,9 +392,9 @@ class APAccountServicesParser:
         """Extract payment/direct deposit information."""
         payments = []
 
-        # Find payment information section
+        # Find payment information section - capture until next major section or company name
         section = re.search(
-            r'Payment Information.*?Bank\s+Account Name\s+Account Number\s+USD Amount\s+Payment Amount(.*?)$',
+            r'Payment Information.*?Bank\s+Account Name\s+Account Number.*?Payment Amount\s*\n(.*?)(?=\n[A-Z][A-Za-z\s]+LLC|\Z)',
             text,
             re.DOTALL | re.MULTILINE
         )
@@ -410,24 +410,52 @@ class APAccountServicesParser:
             if not line or line.startswith('Bank') or '=' in line:
                 continue
 
-            # Parse payment line
-            match = re.match(r'([^\*]+?)\s+([^\*]+?)\s+(\*+\d+)\s+([\d,\.]+)\s+(\w+)?', line)
+            # Parse payment line - handle both formats:
+            # Format 1: "Lead Bank Lead Bank ******5257 ******5257 150.11 USD" (account# twice)
+            # Format 2: "Chase Bank Chase B. ******9058 506.53 USD" (account# once)
 
-            if match:
-                payment = {
-                    "bank": match.group(1).strip(),
-                    "account_name": match.group(2).strip(),
-                    "account_number": match.group(3).strip(),
-                    "amount": self._parse_decimal(match.group(4)),
-                }
+            # Split by spaces and look for asterisk pattern
+            parts = line.split()
+            account_indices = [i for i, part in enumerate(parts) if part.startswith('*')]
 
-                currency = match.group(5)
-                if currency:
-                    payment["currency"] = currency.strip()
-                else:
-                    payment["currency"] = "USD"  # Default
+            if not account_indices:
+                continue
 
-                payments.append(payment)
+            # Find the account number (first occurrence of ******xxxx)
+            account_idx = account_indices[0]
+            account_number = parts[account_idx]
+
+            # Everything before account number is bank_name + account_name
+            before_account = parts[:account_idx]
+            if len(before_account) < 2:
+                continue
+
+            # Try to split bank name and account name
+            # Usually bank name is first word(s), account name is rest
+            bank_name = ' '.join(before_account[:len(before_account)//2]) if len(before_account) > 2 else before_account[0]
+            account_name = ' '.join(before_account[len(before_account)//2:]) if len(before_account) > 2 else before_account[-1]
+
+            # Everything after account number(s) should be amount and optionally currency
+            after_account = parts[account_idx+1:]
+            # Skip duplicate account number if present
+            if after_account and after_account[0].startswith('*'):
+                after_account = after_account[1:]
+
+            if not after_account:
+                continue
+
+            amount_str = after_account[0]
+            currency = after_account[1] if len(after_account) > 1 else "USD"
+
+            payment = {
+                "bank_name": bank_name,
+                "account_name": account_name,
+                "account_number": account_number,
+                "amount": self._parse_decimal(amount_str),
+                "currency": currency
+            }
+
+            payments.append(payment)
 
         return payments
 
