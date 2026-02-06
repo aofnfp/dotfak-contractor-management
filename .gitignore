@@ -51,3 +51,6 @@ logs/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Local Netlify folder
+.netlify
