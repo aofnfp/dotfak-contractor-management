@@ -39,7 +39,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
 
       try {
         setCheckingAccounts(true)
-        const result = await paystubsApi.checkAccounts(parseInt(id))
+        const result = await paystubsApi.checkAccounts(id)
         setHasUnassignedAccounts(result.needs_assignment)
       } catch (error) {
         console.error('Failed to check accounts:', error)
