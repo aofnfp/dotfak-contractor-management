@@ -15,6 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Add cache busting argument
 ARG CACHEBUST=1
 
+# Prevent Python from writing bytecode (.pyc files)
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 # Copy the entire project
 COPY . .
 
