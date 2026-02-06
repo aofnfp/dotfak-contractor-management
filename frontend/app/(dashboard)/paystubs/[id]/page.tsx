@@ -1,8 +1,8 @@
 'use client'
 
-import { use } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trash2, FileText, User, Building2, Calendar, DollarSign, Clock, AlertCircle, Download } from 'lucide-react'
+import { ArrowLeft, Trash2, FileText, User, Building2, Calendar, DollarSign, Clock, AlertCircle, Download, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { usePaystub, useDeletePaystub } from '@/lib/hooks/usePaystubs'
+import { paystubsApi } from '@/lib/api/paystubs'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface PaystubDetailPageProps {
@@ -28,12 +29,38 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
   const router = useRouter()
   const { data: paystub, isLoading, error } = usePaystub(id)
   const deletePaystub = useDeletePaystub()
+  const [hasUnassignedAccounts, setHasUnassignedAccounts] = useState(false)
+  const [checkingAccounts, setCheckingAccounts] = useState(true)
+
+  // Check for unassigned accounts when paystub loads
+  useEffect(() => {
+    const checkAccounts = async () => {
+      if (!paystub) return
+
+      try {
+        setCheckingAccounts(true)
+        const result = await paystubsApi.checkAccounts(parseInt(id))
+        setHasUnassignedAccounts(result.needs_assignment)
+      } catch (error) {
+        console.error('Failed to check accounts:', error)
+        setHasUnassignedAccounts(false)
+      } finally {
+        setCheckingAccounts(false)
+      }
+    }
+
+    checkAccounts()
+  }, [paystub, id])
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this paystub? This action cannot be undone.')) {
       await deletePaystub.mutateAsync(id)
       router.push('/paystubs')
     }
+  }
+
+  const handleAssignAccounts = () => {
+    router.push(`/paystubs/${id}/assign`)
   }
 
   if (isLoading) {
@@ -90,6 +117,16 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
           </p>
         </div>
         <div className="flex gap-2">
+          {hasUnassignedAccounts && !checkingAccounts && (
+            <Button
+              onClick={handleAssignAccounts}
+              variant="outline"
+              className="border-cta text-cta hover:bg-cta hover:text-white"
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Assign Bank Accounts
+            </Button>
+          )}
           <Button
             onClick={handleDelete}
             variant="destructive"
