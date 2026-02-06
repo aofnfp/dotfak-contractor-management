@@ -111,6 +111,26 @@ async def root():
     }
 
 
+@app.get("/debug/parser-version")
+async def debug_parser_version():
+    """Debug endpoint to check which parser version is loaded."""
+    from parsers.ap_account_services_parser import APAccountServicesParser
+    parser = APAccountServicesParser()
+
+    # Try to read the actual parser file
+    import inspect
+    parser_file = inspect.getfile(APAccountServicesParser)
+
+    return {
+        "parser_version": parser.version,
+        "parser_file_path": parser_file,
+        "parser_class": str(APAccountServicesParser),
+        "git_commit": "8bedf2ea",  # Latest commit
+        "expected_version": "2.0-TOKEN-BASED-PARSER",
+        "status": "OK" if parser.version == "2.0-TOKEN-BASED-PARSER" else "OUTDATED"
+    }
+
+
 # Get available organizations
 @app.get("/organizations")
 async def get_organizations():
