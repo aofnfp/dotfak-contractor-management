@@ -23,7 +23,10 @@ export default function LoginPage() {
 
     try {
       await login({ email, password })
-      router.push('/dashboard')
+      // Use window.location for hard navigation to ensure state is fully loaded
+      if (typeof window !== 'undefined') {
+        window.location.href = '/dashboard'
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Invalid email or password')
     }
