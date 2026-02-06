@@ -17,7 +17,7 @@ class APAccountServicesParser:
 
     def __init__(self):
         """Initialize parser with regex patterns."""
-        self.version = "1.0"
+        self.version = "2.0-TOKEN-BASED-PARSER"
         self.organization = "ap_account_services"
 
     def parse(self, text: str, source_file: str = None) -> List[Dict[str, Any]]:

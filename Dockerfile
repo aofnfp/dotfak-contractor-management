@@ -12,8 +12,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Add cache busting argument
+ARG CACHEBUST=1
+
 # Copy the entire project
 COPY . .
+
+# Remove all Python cache to ensure fresh code
+RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 # Expose port
 EXPOSE 8000
