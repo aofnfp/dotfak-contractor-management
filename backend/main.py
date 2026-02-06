@@ -131,6 +131,49 @@ async def debug_parser_version():
     }
 
 
+@app.post("/debug/test-parse")
+async def debug_test_parse(file: UploadFile = File(...)):
+    """Debug: Parse a PDF and return raw results to verify parser works."""
+    import sys
+
+    # Save file temporarily
+    tmp_dir = Path(__file__).parent.parent / ".tmp"
+    tmp_dir.mkdir(exist_ok=True)
+    pdf_path = tmp_dir / file.filename
+    with open(pdf_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    # Extract text exactly like the upload endpoint
+    text = extract_text_from_pdf(str(pdf_path))
+
+    # Parse with the same get_parser flow
+    parser_module = get_parser("ap_account_services")
+    paystubs = parser_module.parse(text, file.filename)
+
+    # Also test direct class instantiation
+    from parsers.ap_account_services_parser import APAccountServicesParser
+    direct_parser = APAccountServicesParser()
+    direct_paystubs = direct_parser.parse(text, file.filename)
+
+    # Clean up
+    pdf_path.unlink()
+
+    # Return diagnostic info
+    return {
+        "get_parser_module": str(parser_module),
+        "get_parser_module_file": getattr(parser_module, '__file__', 'unknown'),
+        "sys_modules_parser": str(sys.modules.get('parsers.ap_account_services_parser', 'NOT LOADED')),
+        "total_paystubs_via_get_parser": len(paystubs),
+        "total_paystubs_via_direct": len(direct_paystubs),
+        "first_paystub_version_get_parser": paystubs[0].get('metadata', {}).get('parser_version') if paystubs else None,
+        "first_paystub_version_direct": direct_paystubs[0].get('metadata', {}).get('parser_version') if direct_paystubs else None,
+        "first_paystub_payment_info_get_parser": paystubs[0].get('payment_info', []) if paystubs else [],
+        "first_paystub_payment_info_direct": direct_paystubs[0].get('payment_info', []) if direct_paystubs else [],
+        "direct_parser_version": direct_parser.version,
+    }
+
+
 # Get available organizations
 @app.get("/organizations")
 async def get_organizations():
