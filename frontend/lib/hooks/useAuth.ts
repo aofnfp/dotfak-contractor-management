@@ -8,9 +8,11 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isInitialized: boolean
   login: (credentials: LoginRequest) => Promise<void>
   logout: () => void
   setUser: (user: User, token: string) => void
+  setInitialized: () => void
 }
 
 export const useAuth = create<AuthState>((set) => ({
@@ -18,6 +20,7 @@ export const useAuth = create<AuthState>((set) => ({
   token: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitialized: false,
 
   login: async (credentials: LoginRequest) => {
     set({ isLoading: true })
@@ -73,6 +76,10 @@ export const useAuth = create<AuthState>((set) => ({
       isAuthenticated: true,
     })
   },
+
+  setInitialized: () => {
+    set({ isInitialized: true })
+  },
 }))
 
 /**
@@ -97,5 +104,8 @@ export function initializeAuth() {
         localStorage.removeItem('user')
       }
     }
+
+    // Mark initialization as complete
+    useAuth.getState().setInitialized()
   }
 }
