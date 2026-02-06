@@ -1,0 +1,11 @@
+[build]
+  command = "cd frontend && npm install && npm run build"
+  publish = "frontend/.next"
+
+[build.environment]
+  NEXT_PUBLIC_API_URL = "https://dotfak-contractor-management.onrender.com"
+  NEXT_PUBLIC_APP_NAME = "DotFak Contractor Management"
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
