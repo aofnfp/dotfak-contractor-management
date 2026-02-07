@@ -6,7 +6,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'dotfak-contractor-management.onrender.com',
+        hostname: 'q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io',
       },
     ],
   },
