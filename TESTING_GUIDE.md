@@ -664,9 +664,9 @@ All Tests Complete! 🎉
 
 Once all tests pass:
 
-1. **Deploy Backend** → Render.com (free tier)
+1. **Deploy Backend** → Coolify VPS (Docker)
 2. **Deploy Database** → Supabase (already deployed)
-3. **Build Frontend** → Phase 5 (Admin dashboard)
+3. **Deploy Frontend** → Netlify (auto-deploy on push)
 4. **Add Monitoring** → Sentry, UptimeRobot
 5. **Go Live!** → Production ready
 

@@ -270,6 +270,6 @@ All Phase 1 objectives have been successfully implemented and tested. The founda
 - Python 3.13.9
 
 **Deployment ready for:**
-- Backend: Render.com (free tier)
-- Frontend: Vercel (free tier)
+- Backend: Coolify VPS (Docker)
+- Frontend: Netlify
 - Database: Supabase (free tier, 500MB)

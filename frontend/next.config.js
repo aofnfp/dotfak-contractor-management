@@ -5,7 +5,7 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
+        protocol: 'http',
         hostname: 'q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io',
       },
     ],

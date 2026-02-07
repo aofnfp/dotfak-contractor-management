@@ -4,467 +4,121 @@
 
 **GitHub:** https://github.com/Abraham-Oladotun-Foundation/dotfak-contractor-management
 
-## Free Tier Deployment Strategy
-
-### Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Production Setup (100% Free)             │
+│                     Production Setup                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
-│  Frontend (Next.js)          ──────►  Vercel                │
-│  ├─ Admin Dashboard                   • Free forever         │
-│  └─ Contractor Portal                 • Auto-deploy on push │
-│                                        • Global CDN          │
+│  Frontend (Next.js)          ──────►  Netlify               │
+│  ├─ Admin Dashboard                   • Auto-deploy on push │
+│  └─ Contractor Portal                 • Global CDN          │
 │                                                               │
-│  Backend (FastAPI)           ──────►  Render.com            │
-│  ├─ REST API                          • 750 hours/month     │
-│  ├─ Authentication                    • Auto-sleep 15min    │
-│  └─ Business Logic                    • GitHub integration  │
+│  Backend (FastAPI)           ──────►  Coolify VPS           │
+│  ├─ REST API                          • Docker-based        │
+│  ├─ Authentication                    • Always-on           │
+│  └─ Paystub Processing               • 172.190.9.72        │
 │                                                               │
 │  Database & Auth             ──────►  Supabase              │
 │  ├─ PostgreSQL                        • 500MB storage       │
 │  ├─ Row Level Security                • Unlimited requests  │
-│  ├─ JWT Authentication                • Daily backups       │
-│  └─ File Storage (PDFs)               • 50MB storage        │
+│  └─ JWT Authentication                • Daily backups       │
 │                                                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Step 1: Database (Already Done ✅)
+## Production URLs
 
-**Platform:** Supabase
-**Status:** Configured and running
-
-**Database URL:** `postgresql://postgres:[password]@db.pcatbotfxeqrinydewen.supabase.co:5432/postgres`
-
-**Tables Created:**
-- ✅ contractors
-- ✅ client_companies
-- ✅ contractor_assignments
-- ✅ contractor_earnings
-- ✅ contractor_payments
-- ✅ payment_allocations
-- ✅ paystubs
-
-**Authentication:** Supabase Auth with ES256 JWT tokens
+| Service | URL |
+|---------|-----|
+| Frontend | https://dotfak-contractor-management.netlify.app |
+| Backend API | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io |
+| API Docs | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io/docs |
+| Database | https://supabase.com/dashboard/project/pcatbotfxeqrinydewen |
 
 ---
 
-## Step 2: Backend Deployment (Render.com)
+## Frontend (Netlify)
 
-### Prerequisites
-- GitHub account connected to Render
-- Repository pushed to GitHub ✅
+**Config file:** `netlify.toml` (project root)
 
-### Deployment Steps
+**Build settings:**
+- Build command: `cd frontend && npm install && npm run build`
+- Publish directory: `frontend/.next`
+- Plugin: `@netlify/plugin-nextjs`
 
-#### 1. Create New Web Service
-
-Go to: https://dashboard.render.com/
-
-1. Click **"New +"** → **"Web Service"**
-2. Connect your GitHub repository: `Abraham-Oladotun-Foundation/dotfak-contractor-management`
-3. Configure the service:
-
-**Basic Settings:**
+**Environment variables (set in netlify.toml):**
 ```
-Name: dotfak-backend
-Region: Oregon (US West) or closest to your users
-Branch: main
-Root Directory: (leave blank)
-Runtime: Python 3
+NEXT_PUBLIC_API_URL = http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io
+NEXT_PUBLIC_APP_NAME = DotFak Contractor Management
+NODE_VERSION = 20
 ```
 
-**Build Command:**
-```bash
-pip install -r requirements.txt
-```
+**Important:** `NEXT_PUBLIC_*` variables are baked in at build time. If you change them, you must trigger a new Netlify deploy.
 
-**Start Command:**
-```bash
-uvicorn backend.main:app --host 0.0.0.0 --port $PORT
-```
-
-**Instance Type:** Free (512 MB RAM, sleeps after 15 min)
-
-#### 2. Environment Variables
-
-Add these in Render dashboard under **Environment** tab:
-
-```bash
-# Supabase Database
-DATABASE_URL=postgresql://postgres:[password]@db.pcatbotfxeqrinydewen.supabase.co:5432/postgres
-
-# Supabase Auth & API
-SUPABASE_URL=https://pcatbotfxeqrinydewen.supabase.co
-SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_KEY=your-service-role-key-here
-SUPABASE_JWT_SECRET=your-jwt-secret-here
-
-# API Configuration
-API_HOST=0.0.0.0
-API_PORT=$PORT  # Render provides this automatically
-
-# Environment
-ENVIRONMENT=production
-
-# Frontend URL (will set this in Step 3)
-FRONTEND_URL=https://your-vercel-app.vercel.app
-```
-
-#### 3. Deploy
-
-Click **"Create Web Service"**
-
-Render will:
-1. Clone your repository
-2. Install dependencies
-3. Start the FastAPI server
-4. Provide a URL like: `https://dotfak-backend.onrender.com`
-
-**Expected Result:**
-- Visit `https://dotfak-backend.onrender.com/` → Should see:
-  ```json
-  {
-    "service": "Paystub Extractor API",
-    "version": "1.0.0",
-    "status": "running"
-  }
-  ```
-
-#### 4. Keep-Alive Strategy (Optional)
-
-Since free tier sleeps after 15 minutes, you can:
-
-**Option A:** Accept the sleep (first request takes ~30s to wake up)
-
-**Option B:** Use a free service to ping every 14 minutes:
-- UptimeRobot (free, 50 monitors)
-- Cron-job.org (free, unlimited)
-
-Add monitor:
-```
-URL: https://dotfak-backend.onrender.com/
-Interval: Every 14 minutes
-```
+**Auto-deploy:** Every push to `main` triggers a new build.
 
 ---
 
-## Step 3: Frontend Deployment (Vercel) - Future
+## Backend (Coolify VPS)
 
-### Prerequisites
-- Frontend code (Phase 5 - not yet implemented)
-- Vercel account
+**Host:** 172.190.9.72 (via Coolify)
+**URL:** http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io
 
-### When Ready (Phase 5):
+**Deployment:** Docker-based via Coolify dashboard. Uses the `Dockerfile` at project root.
 
-#### 1. Create Next.js Frontend
-```bash
-cd frontend
-npx create-next-app@latest . --typescript --tailwind --app
+**Key Dockerfile settings:**
+```dockerfile
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ```
 
-#### 2. Deploy to Vercel
-```bash
-npm install -g vercel
-vercel login
-vercel --prod
-```
+**`.dockerignore`** excludes `__pycache__/`, `*.pyc`, `.git/`, `.env`, `frontend/`, etc.
 
-#### 3. Environment Variables in Vercel
-```bash
-NEXT_PUBLIC_API_URL=https://dotfak-backend.onrender.com
-NEXT_PUBLIC_SUPABASE_URL=https://pcatbotfxeqrinydewen.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-#### 4. Update Backend FRONTEND_URL
-
-Go back to Render → Environment → Update:
-```bash
-FRONTEND_URL=https://dotfak-contractor-management.vercel.app
-```
-
-This enables CORS for your frontend domain.
+**Environment variables:** Set in Coolify dashboard (same as `.env`).
 
 ---
 
-## Step 4: Testing Deployment
+## Database (Supabase)
 
-### Test Backend API
-
-```bash
-# Health check
-curl https://dotfak-backend.onrender.com/
-
-# Login (use your actual credentials)
-curl -X POST https://dotfak-backend.onrender.com/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@dotfakgroup.com","password":"Admin123!"}'
-
-# List contractors (use token from login)
-curl https://dotfak-backend.onrender.com/contractors \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-```
-
-### Expected Performance
-
-**First Request (Cold Start):**
-- ~30 seconds (if service was sleeping)
-
-**Subsequent Requests:**
-- < 500ms (when service is awake)
-
-**Automatic Sleep:**
-- After 15 minutes of inactivity
-- Next request wakes it up
+**Project:** pcatbotfxeqrinydewen
+**Connection:** `postgresql://postgres:[password]@db.pcatbotfxeqrinydewen.supabase.co:5432/postgres`
 
 ---
 
-## Step 5: Continuous Deployment
+## Deploying Changes
 
-### Auto-Deploy on Push
-
-Both Render and Vercel support automatic deployments:
-
-**Render (Backend):**
+### Frontend changes
 ```bash
-# Any push to main branch auto-deploys
 git add .
-git commit -m "Update: Description of changes"
+git commit -m "feat: description"
 git push origin main
+# Netlify auto-builds and deploys
 ```
 
-Render will:
-1. Detect the push
-2. Rebuild the service
-3. Deploy automatically
-4. Show build logs in dashboard
-
-**Vercel (Frontend):**
-- Same process, auto-deploys on push to main
-
----
-
-## Monitoring & Logs
-
-### Render Dashboard
-
-**View Logs:**
-https://dashboard.render.com/web/[your-service-id]/logs
-
-**Real-time logging:**
-- All print() statements
-- Uvicorn access logs
-- Error tracebacks
-
-**Metrics:**
-- CPU usage
-- Memory usage
-- Request count
-- Response times
-
-### Supabase Dashboard
-
-**Database Logs:**
-https://supabase.com/dashboard/project/pcatbotfxeqrinydewen/logs/postgres-logs
-
-**Monitor:**
-- Query performance
-- Connection count
-- Storage usage
-- API requests
-
----
-
-## Security Checklist
-
-### ✅ Environment Variables
-- [x] Never commit .env to git
-- [x] Use .env.template for documentation
-- [x] Set secrets in Render dashboard
-
-### ✅ Database Security
-- [x] Row Level Security (RLS) enabled
-- [x] Parameterized queries (SQL injection prevention)
-- [x] Connection via SSL
-
-### ✅ API Security
-- [x] JWT authentication with ES256
-- [x] Role-based access control
-- [x] CORS restricted to frontend domain
-- [x] Input validation with Pydantic
-
-### ✅ File Upload Security
-- [x] PDF-only validation
-- [x] File size limits (10MB)
-- [x] SHA-256 duplicate detection
-- [x] Secure storage in Supabase
-
----
-
-## Cost Breakdown (Monthly)
-
-| Service | Plan | Cost |
-|---------|------|------|
-| Supabase | Free Tier | $0 |
-| - Database (500MB) | ✅ | $0 |
-| - Auth (Unlimited) | ✅ | $0 |
-| - Storage (50MB) | ✅ | $0 |
-| Render.com | Free Tier | $0 |
-| - Backend (750 hrs) | ✅ | $0 |
-| Vercel | Hobby Plan | $0 |
-| - Frontend (Unlimited) | ✅ | $0 |
-| **Total** | | **$0/month** |
-
-**Upgrade Path (If Needed):**
-- Supabase Pro: $25/month (8GB database, 100GB storage)
-- Render Starter: $7/month (no sleep, more resources)
-- Vercel Pro: $20/month (team features, analytics)
-
----
-
-## Backup & Recovery
-
-### Database Backups
-
-**Supabase (Automatic):**
-- Daily backups (retained 7 days)
-- Point-in-time recovery available
-
-**Manual Backup:**
+### Backend changes
 ```bash
-pg_dump $DATABASE_URL > backup.sql
+git push origin main
+# Then redeploy in Coolify dashboard (or set up auto-deploy from GitHub)
 ```
-
-### Code Backups
-
-**GitHub (Automatic):**
-- All code versioned in git
-- Complete history preserved
-- Can redeploy any commit
 
 ---
 
 ## Troubleshooting
 
-### Issue: Backend won't start on Render
+### Frontend still hitting wrong backend
+- Check `netlify.toml` → `NEXT_PUBLIC_API_URL` is correct
+- Trigger a fresh Netlify deploy (env vars are baked at build time)
+- Hard refresh browser (Ctrl+Shift+R) to clear cached JS bundles
 
-**Check:**
-1. Build logs for errors
-2. Environment variables set correctly
-3. `requirements.txt` includes all dependencies
+### Backend returning old code
+- Check `.dockerignore` excludes `__pycache__/`
+- Redeploy in Coolify **without cache**
+- Verify with `/debug/parser-version` endpoint
 
-**Fix:**
-```bash
-# Test locally first
-pip install -r requirements.txt
-python backend/main.py
-```
-
-### Issue: Database connection fails
-
-**Check:**
-1. DATABASE_URL is correct
-2. Supabase project is active
-3. IP restrictions in Supabase (should be disabled for Render)
-
-**Fix:**
-- Go to Supabase → Settings → Database → Connection Pooling
-- Use "Session" mode connection string
-
-### Issue: CORS errors from frontend
-
-**Check:**
-1. FRONTEND_URL environment variable set in Render
-2. Frontend is deployed to that URL
-
-**Fix:**
-```python
-# backend/config.py
-allowed_origins = [FRONTEND_URL]
-```
-
----
-
-## Deployment Checklist
-
-### Pre-Deployment
-- [x] All tests passing locally
-- [x] Environment variables documented
-- [x] .gitignore configured correctly
-- [x] Database schema finalized
-- [x] Code pushed to GitHub
-
-### Backend Deployment
-- [ ] Create Render web service
-- [ ] Configure environment variables
-- [ ] Deploy and test endpoints
-- [ ] Set up monitoring
-- [ ] (Optional) Configure keep-alive
-
-### Frontend Deployment (Phase 5)
-- [ ] Build Next.js frontend
-- [ ] Deploy to Vercel
-- [ ] Configure environment variables
-- [ ] Update CORS in backend
-- [ ] Test end-to-end flow
-
-### Post-Deployment
-- [ ] Test all API endpoints
-- [ ] Verify authentication works
-- [ ] Upload test paystub
-- [ ] Record test payment
-- [ ] Monitor logs for errors
-- [ ] Document production URLs
-
----
-
-## Production URLs
-
-### Current Status
-
-**Repository:** https://github.com/Abraham-Oladotun-Foundation/dotfak-contractor-management
-
-**Backend API:** (To be deployed to Render)
-- Production: `https://dotfak-backend.onrender.com`
-- Docs: `https://dotfak-backend.onrender.com/docs`
-- Health: `https://dotfak-backend.onrender.com/`
-
-**Frontend:** (Phase 5 - Not yet deployed)
-- Production: `https://dotfak-contractor-management.vercel.app`
-
-**Database:** (Already running ✅)
-- Supabase: `https://pcatbotfxeqrinydewen.supabase.co`
-
----
-
-## Next Steps
-
-1. **Deploy Backend to Render** (20 minutes)
-   - Follow Step 2 above
-   - Test all endpoints
-
-2. **Build Frontend** (Phase 5)
-   - Admin dashboard
-   - Contractor portal
-
-3. **Deploy Frontend to Vercel** (10 minutes)
-   - Follow Step 3 above
-   - Update CORS settings
-
-4. **Go Live!** 🚀
-   - Monitor performance
-   - Collect user feedback
-   - Iterate and improve
-
----
-
-**Platform:** DotFak Contractor Management System
-**Repository:** https://github.com/Abraham-Oladotun-Foundation/dotfak-contractor-management
-**Status:** Backend ready for deployment, Frontend pending (Phase 5)
-**Deployment Cost:** $0/month (100% free tier)
+### CORS errors
+- Check `FRONTEND_URL` env var in Coolify matches Netlify URL
+- Backend `main.py` must include the Netlify domain in allowed origins
