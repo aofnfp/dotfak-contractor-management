@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 Earnings router - view contractor earnings with payment status.
+
+IMPORTANT: Static routes (/summary, /unpaid/list) MUST be defined before
+the dynamic route (/{earning_id}) to avoid FastAPI matching "summary" as an ID.
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends
@@ -138,81 +141,54 @@ async def list_earnings(
         )
 
 
-@router.get("/{earning_id}")
-async def get_earning(
-    earning_id: str,
-    user: dict = Depends(verify_token)
+@router.get("/summary")
+async def get_earnings_summary(
+    user: dict = Depends(require_admin)
 ):
     """
-    Get earning details by ID.
+    Get earnings summary statistics (admin only).
 
-    - Admin: can view any earning (sees all fields including company_margin)
-    - Contractor: can only view their own earnings (filtered response)
+    Returns aggregate stats across all earnings:
+    - Total earnings
+    - Total paid
+    - Total pending
+    - Count by payment status
 
     Args:
-        earning_id: Earning UUID
-        user: Current user
+        user: Current user (admin)
 
     Returns:
-        Earning details
+        Summary statistics
     """
     try:
-        # Get earning
-        earning_result = supabase_admin_client.table("contractor_earnings").select("*").eq(
-            "id", earning_id
-        ).execute()
+        # Get all earnings
+        earnings_result = supabase_admin_client.table("contractor_earnings").select("*").execute()
 
-        if not earning_result.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Earning not found"
-            )
+        earnings = earnings_result.data if earnings_result.data else []
 
-        earning = earning_result.data[0]
+        # Calculate summary stats
+        total_earnings = sum(float(e.get('contractor_total_earnings') or 0) for e in earnings)
+        total_paid = sum(float(e.get('amount_paid') or 0) for e in earnings)
+        total_pending = sum(float(e.get('amount_pending') or 0) for e in earnings)
 
-        # Check authorization for contractors
-        if user.get("role") != "admin":
-            # Get contractor's assignment IDs
-            own_contractor_id = get_contractor_id(user["user_id"])
+        count_unpaid = sum(1 for e in earnings if e['payment_status'] == 'unpaid')
+        count_partially_paid = sum(1 for e in earnings if e['payment_status'] == 'partially_paid')
+        count_paid = sum(1 for e in earnings if e['payment_status'] == 'paid')
 
-            assignments = supabase_admin_client.table("contractor_assignments").select("id").eq(
-                "contractor_id", own_contractor_id
-            ).execute()
+        return {
+            'total_earnings': total_earnings,
+            'total_paid': total_paid,
+            'total_pending': total_pending,
+            'count_unpaid': count_unpaid,
+            'count_partially_paid': count_partially_paid,
+            'count_paid': count_paid
+        }
 
-            assignment_ids = [a['id'] for a in assignments.data]
-
-            if earning["contractor_assignment_id"] not in assignment_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only view your own earnings"
-                )
-
-            # Filter response for contractor (remove sensitive fields)
-            filtered_earning = {
-                'id': earning['id'],
-                'pay_period_begin': earning['pay_period_begin'],
-                'pay_period_end': earning['pay_period_end'],
-                'client_total_hours': earning['client_total_hours'],
-                'contractor_total_earnings': earning['contractor_total_earnings'],
-                'contractor_regular_earnings': earning['contractor_regular_earnings'],
-                'contractor_bonus_share': earning['contractor_bonus_share'],
-                'payment_status': earning['payment_status'],
-                'amount_paid': earning['amount_paid'],
-                'amount_pending': earning['amount_pending'],
-                'created_at': earning['created_at']
-            }
-            return filtered_earning
-
-        # Admin sees everything
-        return earning
-
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to get earning: {str(e)}")
+        logger.error(f"Failed to get earnings summary: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve earning: {str(e)}"
+            detail=f"Failed to retrieve earnings summary: {str(e)}"
         )
 
 
@@ -292,52 +268,79 @@ async def list_unpaid_earnings(
         )
 
 
-@router.get("/summary")
-async def get_earnings_summary(
-    user: dict = Depends(require_admin)
+@router.get("/{earning_id}")
+async def get_earning(
+    earning_id: str,
+    user: dict = Depends(verify_token)
 ):
     """
-    Get earnings summary statistics (admin only).
+    Get earning details by ID.
 
-    Returns aggregate stats across all earnings:
-    - Total earnings
-    - Total paid
-    - Total pending
-    - Count by payment status
+    - Admin: can view any earning (sees all fields including company_margin)
+    - Contractor: can only view their own earnings (filtered response)
 
     Args:
-        user: Current user (admin)
+        earning_id: Earning UUID
+        user: Current user
 
     Returns:
-        Summary statistics
+        Earning details
     """
     try:
-        # Get all earnings
-        earnings_result = supabase_admin_client.table("contractor_earnings").select("*").execute()
+        # Get earning
+        earning_result = supabase_admin_client.table("contractor_earnings").select("*").eq(
+            "id", earning_id
+        ).execute()
 
-        earnings = earnings_result.data if earnings_result.data else []
+        if not earning_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Earning not found"
+            )
 
-        # Calculate summary stats
-        total_earnings = sum(float(e.get('contractor_total_earnings') or 0) for e in earnings)
-        total_paid = sum(float(e.get('amount_paid') or 0) for e in earnings)
-        total_pending = sum(float(e.get('amount_pending') or 0) for e in earnings)
+        earning = earning_result.data[0]
 
-        count_unpaid = sum(1 for e in earnings if e['payment_status'] == 'unpaid')
-        count_partially_paid = sum(1 for e in earnings if e['payment_status'] == 'partially_paid')
-        count_paid = sum(1 for e in earnings if e['payment_status'] == 'paid')
+        # Check authorization for contractors
+        if user.get("role") != "admin":
+            # Get contractor's assignment IDs
+            own_contractor_id = get_contractor_id(user["user_id"])
 
-        return {
-            'total_earnings': total_earnings,
-            'total_paid': total_paid,
-            'total_pending': total_pending,
-            'count_unpaid': count_unpaid,
-            'count_partially_paid': count_partially_paid,
-            'count_paid': count_paid
-        }
+            assignments = supabase_admin_client.table("contractor_assignments").select("id").eq(
+                "contractor_id", own_contractor_id
+            ).execute()
 
+            assignment_ids = [a['id'] for a in assignments.data]
+
+            if earning["contractor_assignment_id"] not in assignment_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only view your own earnings"
+                )
+
+            # Filter response for contractor (remove sensitive fields)
+            filtered_earning = {
+                'id': earning['id'],
+                'pay_period_begin': earning['pay_period_begin'],
+                'pay_period_end': earning['pay_period_end'],
+                'client_total_hours': earning['client_total_hours'],
+                'contractor_total_earnings': earning['contractor_total_earnings'],
+                'contractor_regular_earnings': earning['contractor_regular_earnings'],
+                'contractor_bonus_share': earning['contractor_bonus_share'],
+                'payment_status': earning['payment_status'],
+                'amount_paid': earning['amount_paid'],
+                'amount_pending': earning['amount_pending'],
+                'created_at': earning['created_at']
+            }
+            return filtered_earning
+
+        # Admin sees everything
+        return earning
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to get earnings summary: {str(e)}")
+        logger.error(f"Failed to get earning: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve earnings summary: {str(e)}"
+            detail=f"Failed to retrieve earning: {str(e)}"
         )
