@@ -13,6 +13,6 @@
 # Proxy API requests to Coolify backend (solves HTTPS mixed content)
 [[redirects]]
   from = "/api/*"
-  to = "http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io/:splat"
+  to = "https://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io/:splat"
   status = 200
   force = true
