@@ -243,7 +243,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
             {paystub.total_hours && (
               <div>
                 <p className="text-sm text-muted-foreground">Total Hours</p>
-                <p className="font-mono">{paystub.total_hours.toFixed(2)} hours</p>
+                <p className="font-mono">{Number(paystub.total_hours).toFixed(2)} hours</p>
               </div>
             )}
           </CardContent>
@@ -303,7 +303,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
                     <TableRow key={index}>
                       <TableCell className="font-medium">{earning.description}</TableCell>
                       <TableCell className="text-right font-mono">
-                        {earning.hours ? earning.hours.toFixed(2) : '—'}
+                        {earning.hours ? Number(earning.hours).toFixed(2) : '—'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {earning.rate ? formatCurrency(earning.rate) : '—'}

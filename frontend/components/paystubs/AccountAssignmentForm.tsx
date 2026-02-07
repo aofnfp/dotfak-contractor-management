@@ -67,18 +67,18 @@ export function AccountAssignmentForm({
   const hasContractorOption = !!contractorAssignmentId
 
   // Calculate totals
-  const totalAmount = unassignedAccounts.reduce((sum, acc) => sum + acc.amount, 0)
+  const totalAmount = unassignedAccounts.reduce((sum, acc) => sum + Number(acc.amount), 0)
   const contractorTotal = Array.from(assignments.entries())
     .filter(([_, assignment]) => assignment.owner_type === 'contractor')
     .reduce((sum, [accountLast4, _]) => {
       const account = unassignedAccounts.find(acc => acc.account_last4 === accountLast4)
-      return sum + (account?.amount || 0)
+      return sum + Number(account?.amount || 0)
     }, 0)
   const adminTotal = Array.from(assignments.entries())
     .filter(([_, assignment]) => assignment.owner_type === 'admin')
     .reduce((sum, [accountLast4, _]) => {
       const account = unassignedAccounts.find(acc => acc.account_last4 === accountLast4)
-      return sum + (account?.amount || 0)
+      return sum + Number(account?.amount || 0)
     }, 0)
 
   return (
@@ -109,7 +109,7 @@ export function AccountAssignmentForm({
                     New Account: {account.bank_name} ****{account.account_last4}
                   </span>
                   <span className="text-2xl font-heading text-cta">
-                    ${account.amount.toFixed(2)}
+                    ${Number(account.amount).toFixed(2)}
                   </span>
                 </CardTitle>
               </CardHeader>

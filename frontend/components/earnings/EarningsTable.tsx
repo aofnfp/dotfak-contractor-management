@@ -134,7 +134,7 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
                   </TableCell>
 
                   <TableCell className="text-right font-mono">
-                    {earning.client_total_hours.toFixed(2)}
+                    {Number(earning.client_total_hours).toFixed(2)}
                   </TableCell>
 
                   <TableCell className="text-right">

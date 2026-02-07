@@ -130,7 +130,7 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
                 {formatCurrency(paystub.gross_pay)}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {paystub.total_hours ? `${paystub.total_hours.toFixed(2)} hrs` : '—'}
+                {paystub.total_hours ? `${Number(paystub.total_hours).toFixed(2)} hrs` : '—'}
               </TableCell>
               <TableCell>
                 {paystub.auto_matched ? (
