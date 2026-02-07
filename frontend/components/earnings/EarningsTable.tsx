@@ -165,17 +165,30 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
 
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
-                      <Link href={`/paystubs/${earning.paystub_id}`}>
+                      {earning.paystub_id ? (
+                        <Link href={`/paystubs/${earning.paystub_id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-11 w-11 p-0"
+                            title="View Paystub"
+                            aria-label="View paystub details"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      ) : (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-11 w-11 p-0"
-                          title="View Paystub"
-                          aria-label="View paystub details"
+                          className="h-11 w-11 p-0 opacity-30 cursor-not-allowed"
+                          title="No paystub linked"
+                          aria-label="No paystub linked"
+                          disabled
                         >
                           <FileText className="h-4 w-4" />
                         </Button>
-                      </Link>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
