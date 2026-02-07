@@ -41,6 +41,11 @@ export default function UploadPaystubPage() {
       // Check the first uploaded paystub for unassigned accounts
       const firstPaystub = response.paystubs[0]
 
+      if (!firstPaystub?.id) {
+        setTimeout(() => router.push('/paystubs'), 1500)
+        return
+      }
+
       try {
         const checkResult = await paystubsApi.checkAccounts(firstPaystub.id)
 

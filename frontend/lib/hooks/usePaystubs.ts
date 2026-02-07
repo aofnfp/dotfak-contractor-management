@@ -17,10 +17,11 @@ export function usePaystubs() {
  * Fetch a single paystub by ID
  */
 export function usePaystub(id: string) {
+  const isValidId = !!id && id !== 'undefined' && id !== 'null'
   return useQuery({
     queryKey: ['paystubs', id],
     queryFn: () => paystubsApi.get(id),
-    enabled: !!id,
+    enabled: isValidId,
   })
 }
 
