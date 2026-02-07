@@ -30,6 +30,7 @@ export default function AssignAccountsPage() {
   })()
 
   useEffect(() => {
+    if (!paystubId) return
     loadUnassignedAccounts()
   }, [paystubId])
 

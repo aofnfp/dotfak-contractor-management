@@ -318,9 +318,9 @@ async def get_earnings_summary(
         earnings = earnings_result.data if earnings_result.data else []
 
         # Calculate summary stats
-        total_earnings = sum(float(e['contractor_total_earnings']) for e in earnings)
-        total_paid = sum(float(e['amount_paid']) for e in earnings)
-        total_pending = sum(float(e['amount_pending']) for e in earnings)
+        total_earnings = sum(float(e.get('contractor_total_earnings') or 0) for e in earnings)
+        total_paid = sum(float(e.get('amount_paid') or 0) for e in earnings)
+        total_pending = sum(float(e.get('amount_pending') or 0) for e in earnings)
 
         count_unpaid = sum(1 for e in earnings if e['payment_status'] == 'unpaid')
         count_partially_paid = sum(1 for e in earnings if e['payment_status'] == 'partially_paid')

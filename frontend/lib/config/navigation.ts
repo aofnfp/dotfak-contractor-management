@@ -5,7 +5,6 @@ import {
   FileText,
   DollarSign,
   CreditCard,
-  BarChart3,
 } from 'lucide-react'
 import type { NavSection } from '@/lib/types/navigation'
 
@@ -64,12 +63,6 @@ export const navigationConfig: NavSection[] = [
         href: '/payments',
         icon: CreditCard,
         description: 'Record and track payments',
-      },
-      {
-        title: 'Reports',
-        href: '/reports',
-        icon: BarChart3,
-        description: 'Financial reports',
       },
     ],
   },
