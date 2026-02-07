@@ -94,4 +94,18 @@ apiClient.interceptors.response.use(
   }
 )
 
+/**
+ * Extract a human-readable error message from an API error.
+ * Handles both string details and Pydantic validation error arrays.
+ */
+export function getApiErrorMessage(error: any, fallback: string): string {
+  const detail = error?.response?.data?.detail
+  if (!detail) return fallback
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ')
+  }
+  return fallback
+}
+
 export default apiClient

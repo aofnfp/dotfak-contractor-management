@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AccountAssignmentForm } from '@/components/paystubs/AccountAssignmentForm'
 import { paystubsApi } from '@/lib/api/paystubs'
+import { getApiErrorMessage } from '@/lib/api/client'
 import { toast } from 'sonner'
 import type { UnassignedAccountInfo, AccountAssignmentItem } from '@/lib/types/paystub'
 
@@ -19,10 +20,14 @@ export default function AssignAccountsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Get admin user ID from localStorage (set during login)
-  const adminUserId = typeof window !== 'undefined'
-    ? localStorage.getItem('user_id') || ''
-    : ''
+  // Get admin user ID from stored user object (set during login)
+  const adminUserId = (() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      return user.id || ''
+    } catch { return '' }
+  })()
 
   useEffect(() => {
     loadUnassignedAccounts()
@@ -49,7 +54,7 @@ export default function AssignAccountsPage() {
       setUnassignedAccounts(result.unassigned_accounts)
     } catch (error: any) {
       console.error('Failed to load accounts:', error)
-      toast.error(error.response?.data?.detail || 'Failed to load accounts')
+      toast.error(getApiErrorMessage(error, 'Failed to load accounts'))
       router.push(`/paystubs/${paystubId}`)
     } finally {
       setIsLoading(false)
@@ -66,7 +71,7 @@ export default function AssignAccountsPage() {
       router.push(`/paystubs/${paystubId}`)
     } catch (error: any) {
       console.error('Failed to assign accounts:', error)
-      toast.error(error.response?.data?.detail || 'Failed to assign accounts')
+      toast.error(getApiErrorMessage(error, 'Failed to assign accounts'))
     } finally {
       setIsSubmitting(false)
     }
