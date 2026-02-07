@@ -5,8 +5,8 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io',
+        protocol: 'https',
+        hostname: 'dotfak-contractor-management.netlify.app',
       },
     ],
   },

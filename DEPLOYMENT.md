@@ -52,10 +52,12 @@
 
 **Environment variables (set in netlify.toml):**
 ```
-NEXT_PUBLIC_API_URL = http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io
+NEXT_PUBLIC_API_URL = /api
 NEXT_PUBLIC_APP_NAME = DotFak Contractor Management
 NODE_VERSION = 20
 ```
+
+**API Proxy:** Netlify proxies `/api/*` to the Coolify backend (`http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io`). This solves HTTPS mixed content — the browser only sees same-origin HTTPS requests.
 
 **Important:** `NEXT_PUBLIC_*` variables are baked in at build time. If you change them, you must trigger a new Netlify deploy.
 
