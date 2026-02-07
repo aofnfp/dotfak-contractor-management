@@ -3,7 +3,7 @@
   publish = "frontend/.next"
 
 [build.environment]
-  NEXT_PUBLIC_API_URL = "https://dotfak-contractor-management.onrender.com"
+  NEXT_PUBLIC_API_URL = "http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io"
   NEXT_PUBLIC_APP_NAME = "DotFak Contractor Management"
   NODE_VERSION = "20"
 
