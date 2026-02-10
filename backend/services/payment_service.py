@@ -248,6 +248,50 @@ class PaymentService:
             raise
 
     @staticmethod
+    def preview_fifo_allocation(contractor_id: str, amount: float) -> List[Dict]:
+        """
+        Preview how a payment amount would be allocated using FIFO.
+
+        Args:
+            contractor_id: Contractor UUID
+            amount: Payment amount to preview
+
+        Returns:
+            List of preview items with current_pending, will_allocate, new_pending, fully_paid
+        """
+        unpaid_earnings = PaymentService.get_unpaid_earnings(contractor_id)
+
+        if not unpaid_earnings:
+            return []
+
+        payment_amount = Decimal(str(amount))
+        remaining = payment_amount
+        preview_items = []
+
+        for earning in unpaid_earnings:
+            pending = Decimal(str(earning['amount_pending']))
+
+            if pending <= 0:
+                continue
+
+            allocation = min(remaining, pending) if remaining > 0 else Decimal('0')
+            new_pending = pending - allocation
+
+            preview_items.append({
+                'earning_id': earning['id'],
+                'pay_period_begin': earning['pay_period_begin'],
+                'pay_period_end': earning['pay_period_end'],
+                'current_pending': float(pending),
+                'will_allocate': float(allocation),
+                'new_pending': float(new_pending),
+                'fully_paid': new_pending <= 0,
+            })
+
+            remaining -= allocation
+
+        return preview_items
+
+    @staticmethod
     def get_earnings_summary(contractor_id: str) -> Dict:
         """
         Get earnings summary for a contractor.

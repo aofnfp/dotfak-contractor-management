@@ -1,10 +1,11 @@
 'use client'
 
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -20,6 +21,9 @@ import type { PaymentStatus } from '@/lib/types/earning'
 
 interface EarningsTableProps {
   earnings: EarningWithDetails[]
+  selectable?: boolean
+  selectedIds?: Set<string>
+  onSelectionChange?: (selectedIds: Set<string>) => void
 }
 
 const getPaymentStatusBadge = (status: PaymentStatus) => {
@@ -45,8 +49,12 @@ const getPaymentStatusBadge = (status: PaymentStatus) => {
   }
 }
 
-export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsTableProps) {
-  // Memoize totals calculation to prevent recalculation on every render
+export const EarningsTable = memo(function EarningsTable({
+  earnings,
+  selectable = false,
+  selectedIds,
+  onSelectionChange,
+}: EarningsTableProps) {
   const totals = useMemo(() => ({
     totalRegular: earnings.reduce((sum, e) => sum + e.contractor_regular_earnings, 0),
     totalBonus: earnings.reduce((sum, e) => sum + e.contractor_bonus_share, 0),
@@ -54,6 +62,31 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
     totalPaid: earnings.reduce((sum, e) => sum + e.amount_paid, 0),
     totalPending: earnings.reduce((sum, e) => sum + e.amount_pending, 0),
   }), [earnings])
+
+  const allSelected = useMemo(() => {
+    if (!selectable || !selectedIds || earnings.length === 0) return false
+    return earnings.every(e => selectedIds.has(e.id))
+  }, [selectable, selectedIds, earnings])
+
+  const toggleOne = useCallback((id: string) => {
+    if (!onSelectionChange || !selectedIds) return
+    const next = new Set(selectedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    onSelectionChange(next)
+  }, [onSelectionChange, selectedIds])
+
+  const toggleAll = useCallback(() => {
+    if (!onSelectionChange) return
+    if (allSelected) {
+      onSelectionChange(new Set())
+    } else {
+      onSelectionChange(new Set(earnings.map(e => e.id)))
+    }
+  }, [onSelectionChange, allSelected, earnings])
 
   if (earnings.length === 0) {
     return (
@@ -78,6 +111,15 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/50">
+                {selectable && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="font-heading">Pay Period</TableHead>
                 <TableHead className="font-heading">Contractor</TableHead>
                 <TableHead className="font-heading">Client</TableHead>
@@ -92,144 +134,159 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
               </TableRow>
             </TableHeader>
             <TableBody>
-              {earnings.map((earning) => (
-                <TableRow key={earning.id} className="hover:bg-secondary/20">
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {formatDate(earning.pay_period_begin)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        to {formatDate(earning.pay_period_end)}
-                      </span>
-                    </div>
-                  </TableCell>
+              {earnings.map((earning) => {
+                const isSelected = selectable && selectedIds?.has(earning.id)
+                return (
+                  <TableRow
+                    key={earning.id}
+                    className={`hover:bg-secondary/20 ${isSelected ? 'bg-cta/5' : ''}`}
+                  >
+                    {selectable && (
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected || false}
+                          onCheckedChange={() => toggleOne(earning.id)}
+                          aria-label={`Select earning for ${formatDate(earning.pay_period_begin)}`}
+                        />
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {formatDate(earning.pay_period_begin)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          to {formatDate(earning.pay_period_end)}
+                        </span>
+                      </div>
+                    </TableCell>
 
-                  <TableCell>
-                    <Link
-                      href={`/contractors/${earning.contractor_assignment_id}`}
-                      className="hover:underline"
-                    >
+                    <TableCell>
+                      <Link
+                        href={`/contractors/${earning.contractor_assignment_id}`}
+                        className="hover:underline"
+                      >
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-cta" />
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {earning.contractor_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground font-mono">
+                              {earning.contractor_code}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </TableCell>
+
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-cta" />
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <div className="font-medium text-foreground">
-                            {earning.contractor_name}
+                            {earning.client_name}
                           </div>
                           <div className="text-sm text-muted-foreground font-mono">
-                            {earning.contractor_code}
+                            {earning.client_code}
                           </div>
                         </div>
                       </div>
-                    </Link>
-                  </TableCell>
+                    </TableCell>
 
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium text-foreground">
-                          {earning.client_name}
-                        </div>
-                        <div className="text-sm text-muted-foreground font-mono">
-                          {earning.client_code}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {Number(earning.client_total_hours).toFixed(2)}
+                    </TableCell>
 
-                  <TableCell className="text-right font-mono">
-                    {Number(earning.client_total_hours).toFixed(2)}
-                  </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(earning.contractor_regular_earnings)}
+                    </TableCell>
 
-                  <TableCell className="text-right font-mono">
-                    {formatCurrency(earning.contractor_regular_earnings)}
-                  </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {earning.contractor_bonus_share > 0 ? (
+                        <span className="text-amber-500 font-semibold">
+                          {formatCurrency(earning.contractor_bonus_share)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
 
-                  <TableCell className="text-right font-mono">
-                    {earning.contractor_bonus_share > 0 ? (
-                      <span className="text-amber-500 font-semibold">
-                        {formatCurrency(earning.contractor_bonus_share)}
+                    <TableCell className="text-right">
+                      <span className="font-bold text-cta font-mono">
+                        {formatCurrency(earning.contractor_total_earnings)}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
+                    </TableCell>
 
-                  <TableCell className="text-right">
-                    <span className="font-bold text-cta font-mono">
-                      {formatCurrency(earning.contractor_total_earnings)}
-                    </span>
-                  </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {formatCurrency(earning.amount_paid)}
+                    </TableCell>
 
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {formatCurrency(earning.amount_paid)}
-                  </TableCell>
+                    <TableCell className="text-right">
+                      <span
+                        className={`font-mono ${
+                          earning.amount_pending > 0
+                            ? 'text-destructive font-semibold'
+                            : earning.amount_pending < 0
+                              ? 'text-amber-500 font-semibold'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {earning.amount_pending < 0
+                          ? `(${formatCurrency(Math.abs(earning.amount_pending))})`
+                          : formatCurrency(earning.amount_pending)}
+                      </span>
+                      {earning.amount_pending < 0 && (
+                        <div className="text-xs text-amber-500">overpaid</div>
+                      )}
+                    </TableCell>
 
-                  <TableCell className="text-right">
-                    <span
-                      className={`font-mono ${
-                        earning.amount_pending > 0
-                          ? 'text-destructive font-semibold'
-                          : earning.amount_pending < 0
-                            ? 'text-amber-500 font-semibold'
-                            : 'text-muted-foreground'
-                      }`}
-                    >
-                      {earning.amount_pending < 0
-                        ? `(${formatCurrency(Math.abs(earning.amount_pending))})`
-                        : formatCurrency(earning.amount_pending)}
-                    </span>
-                    {earning.amount_pending < 0 && (
-                      <div className="text-xs text-amber-500">overpaid</div>
-                    )}
-                  </TableCell>
+                    <TableCell>
+                      {getPaymentStatusBadge(earning.payment_status)}
+                    </TableCell>
 
-                  <TableCell>
-                    {getPaymentStatusBadge(earning.payment_status)}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Link href={`/earnings/${earning.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-11 w-11 p-0"
-                          title="View Breakdown"
-                          aria-label="View earning breakdown"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      {earning.paystub_id ? (
-                        <Link href={`/paystubs/${earning.paystub_id}`}>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Link href={`/earnings/${earning.id}`}>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-11 w-11 p-0"
-                            title="View Paystub"
-                            aria-label="View paystub details"
+                            title="View Breakdown"
+                            aria-label="View earning breakdown"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        {earning.paystub_id ? (
+                          <Link href={`/paystubs/${earning.paystub_id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-11 w-11 p-0"
+                              title="View Paystub"
+                              aria-label="View paystub details"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-11 w-11 p-0 opacity-30 cursor-not-allowed"
+                            title="No paystub linked"
+                            aria-label="No paystub linked"
+                            disabled
                           >
                             <FileText className="h-4 w-4" />
                           </Button>
-                        </Link>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-11 w-11 p-0 opacity-30 cursor-not-allowed"
-                          title="No paystub linked"
-                          aria-label="No paystub linked"
-                          disabled
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>

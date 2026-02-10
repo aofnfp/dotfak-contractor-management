@@ -1,15 +1,19 @@
 'use client'
 
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useUnpaidEarnings } from '@/lib/hooks/useEarnings'
 import { formatCurrency } from '@/lib/utils'
-import { AlertCircle, DollarSign, Users, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, DollarSign, Users, CheckCircle2, X } from 'lucide-react'
 
 export default function UnpaidEarningsPage() {
+  const router = useRouter()
   const { data: earnings, isLoading, error } = useUnpaidEarnings()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Calculate stats from unpaid earnings
   const stats = earnings
@@ -20,6 +24,27 @@ export default function UnpaidEarningsPage() {
       }
     : { totalPending: 0, totalContractors: 0, count: 0 }
 
+  // Compute selection-derived state
+  const selectionInfo = useMemo(() => {
+    if (!earnings || selectedIds.size === 0) {
+      return { selectedEarnings: [], selectedPending: 0, uniqueContractors: new Set<string>(), isMixed: false }
+    }
+    const selectedEarnings = earnings.filter(e => selectedIds.has(e.id))
+    const selectedPending = selectedEarnings.reduce((sum, e) => sum + e.amount_pending, 0)
+    const uniqueContractors = new Set(selectedEarnings.map(e => e.contractor_id))
+    return {
+      selectedEarnings,
+      selectedPending,
+      uniqueContractors,
+      isMixed: uniqueContractors.size > 1,
+    }
+  }, [earnings, selectedIds])
+
+  const handlePaySelected = () => {
+    const ids = Array.from(selectedIds).join(',')
+    router.push(`/payments/new?earning_ids=${ids}`)
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -27,7 +52,7 @@ export default function UnpaidEarningsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Unpaid Earnings</h1>
           <p className="text-muted-foreground mt-2">
-            View all earnings with outstanding payments
+            Select earnings and record payments against them
           </p>
         </div>
         <Link href="/payments/new">
@@ -99,17 +124,17 @@ export default function UnpaidEarningsPage() {
         </div>
       )}
 
-      {/* Alert Box */}
-      <Card className="border-destructive/50 bg-destructive/5">
+      {/* Info Box */}
+      <Card className="border-muted bg-secondary/20">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
-              <h3 className="font-semibold text-foreground">Action Required</h3>
+              <h3 className="font-semibold text-foreground">Select & Pay</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                These earnings have not been paid yet. Review the list below and record
-                payments when completed. Payments are allocated oldest-first (FIFO) to
-                ensure proper tracking.
+                Use the checkboxes to select specific earnings you want to pay, then click
+                &ldquo;Pay Selected&rdquo; in the bar below. All selected earnings must belong
+                to the same contractor.
               </p>
             </div>
           </div>
@@ -128,7 +153,14 @@ export default function UnpaidEarningsPage() {
           </CardContent>
         </Card>
       ) : earnings && earnings.length > 0 ? (
-        <EarningsTable earnings={earnings} />
+        <div className={selectedIds.size > 0 ? 'pb-20' : ''}>
+          <EarningsTable
+            earnings={earnings}
+            selectable
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+          />
+        </div>
       ) : (
         <Card>
           <CardContent className="py-12 text-center">
@@ -141,6 +173,49 @@ export default function UnpaidEarningsPage() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Sticky Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="font-medium text-foreground">
+                {selectedIds.size} selected
+              </span>
+              <span className="text-muted-foreground">|</span>
+              <span className="font-mono font-bold text-cta">
+                {formatCurrency(selectionInfo.selectedPending)} pending
+              </span>
+              {selectionInfo.isMixed && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="text-sm text-destructive font-medium">
+                    Select earnings from one contractor only
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+              <Button
+                className="bg-cta hover:bg-cta/90"
+                disabled={selectionInfo.isMixed}
+                onClick={handlePaySelected}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Pay Selected
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

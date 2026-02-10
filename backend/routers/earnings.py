@@ -100,6 +100,8 @@ async def list_earnings(
                 ).eq("id", earning['contractor_assignment_id']).execute()
 
                 if assignment.data:
+                    enriched['contractor_id'] = assignment.data[0]['contractor_id']
+
                     # Get contractor info
                     contractor = supabase_admin_client.table("contractors").select(
                         "first_name, last_name, contractor_code"
@@ -233,6 +235,8 @@ async def list_unpaid_earnings(
                 ).eq("id", earning['contractor_assignment_id']).execute()
 
                 if assignment.data:
+                    enriched['contractor_id'] = assignment.data[0]['contractor_id']
+
                     # Get contractor info
                     contractor = supabase_admin_client.table("contractors").select(
                         "first_name, last_name, contractor_code"

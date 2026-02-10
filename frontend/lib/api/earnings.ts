@@ -55,6 +55,14 @@ export const earningsApi = {
   },
 
   /**
+   * Get multiple earnings by IDs (parallel fetch)
+   */
+  getByIds: async (ids: string[]): Promise<EarningWithDetails[]> => {
+    const results = await Promise.all(ids.map((id) => earningsApi.get(id)))
+    return results
+  },
+
+  /**
    * Get earnings summary stats
    */
   getSummary: async (): Promise<EarningsSummary> => {

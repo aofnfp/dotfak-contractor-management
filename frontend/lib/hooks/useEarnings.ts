@@ -56,6 +56,17 @@ export function useUnpaidEarnings() {
 }
 
 /**
+ * Get multiple earnings by IDs
+ */
+export function useEarningsByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ['earnings', 'byIds', ...ids],
+    queryFn: () => earningsApi.getByIds(ids),
+    enabled: ids.length > 0,
+  })
+}
+
+/**
  * Get earnings summary stats
  */
 export function useEarningsSummary() {
