@@ -329,6 +329,8 @@ async def check_paystub_accounts(
     """
     try:
         result = BankAccountService.check_paystub_accounts(paystub_id)
+        # Sync payment status after accounts are auto-matched
+        BankAccountService.sync_earnings_payment_status(paystub_id)
         return result
     except ValueError as e:
         raise HTTPException(
@@ -378,6 +380,8 @@ async def assign_paystub_accounts(
         ]
 
         result = BankAccountService.assign_accounts(paystub_id, assignments)
+        # Sync payment status after accounts are assigned
+        BankAccountService.sync_earnings_payment_status(paystub_id)
         return result
     except ValueError as e:
         raise HTTPException(

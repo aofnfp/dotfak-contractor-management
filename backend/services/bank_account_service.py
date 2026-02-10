@@ -310,3 +310,76 @@ class BankAccountService:
         except Exception as e:
             logger.error(f"Error getting bank accounts: {str(e)}")
             return []
+
+    @staticmethod
+    def sync_earnings_payment_status(paystub_id: int) -> None:
+        """
+        Sync contractor_earnings payment fields from paystub_account_splits.
+
+        Uses the contractor's bank deposit as the actual payment amount,
+        compares to expected earnings, and sets variance/payment status.
+
+        Should be called after account splits are created or updated.
+        """
+        try:
+            # Get the earnings record for this paystub
+            earnings_result = supabase_admin_client.table("contractor_earnings").select(
+                "id, contractor_total_earnings"
+            ).eq("paystub_id", paystub_id).execute()
+
+            if not earnings_result.data:
+                logger.debug(f"No earnings record for paystub {paystub_id}, skipping sync")
+                return
+
+            earning = earnings_result.data[0]
+            expected = Decimal(str(earning['contractor_total_earnings']))
+
+            # Get contractor's actual deposit from splits
+            splits_result = supabase_admin_client.table("paystub_account_splits").select(
+                "amount, bank_accounts!inner(owner_type)"
+            ).eq("paystub_id", paystub_id).execute()
+
+            contractor_deposit = Decimal('0')
+            for split in splits_result.data or []:
+                if split.get('bank_accounts', {}).get('owner_type') == 'contractor':
+                    contractor_deposit += Decimal(str(split['amount']))
+
+            # Calculate variance
+            variance = contractor_deposit - expected
+
+            if abs(variance) <= Decimal('0.01'):
+                variance_status = 'correct'
+            elif variance > 0:
+                variance_status = 'overpaid'
+            else:
+                variance_status = 'underpaid'
+
+            # Determine payment status
+            if contractor_deposit >= expected - Decimal('0.01'):
+                payment_status = 'paid'
+            elif contractor_deposit > 0:
+                payment_status = 'partially_paid'
+            else:
+                payment_status = 'unpaid'
+
+            pending = max(expected - contractor_deposit, Decimal('0'))
+
+            # Update the earnings record
+            supabase_admin_client.table("contractor_earnings").update({
+                'expected_earnings': float(expected),
+                'actual_payments': float(contractor_deposit),
+                'amount_paid': float(contractor_deposit),
+                'amount_pending': float(pending),
+                'payment_variance': float(variance),
+                'variance_status': variance_status,
+                'payment_status': payment_status,
+            }).eq("id", earning['id']).execute()
+
+            logger.info(
+                f"Synced earnings for paystub {paystub_id}: "
+                f"expected=${expected}, actual=${contractor_deposit}, "
+                f"variance=${variance} ({variance_status})"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to sync earnings payment status for paystub {paystub_id}: {e}")
