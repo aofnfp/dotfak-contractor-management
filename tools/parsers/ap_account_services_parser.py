@@ -160,6 +160,26 @@ class APAccountServicesParser:
 
         return summary
 
+    # Regex for standard earnings line: Description Dates Hours Rate Amount YTD
+    _RE_EARNING_STANDARD = re.compile(
+        r'([^\d]+?)\s+(\d{2}/\d{2}/\d{4}-\d{2}/\d{2}/\d{4})\s+'
+        r'([\d\.]+)\s+([\d\.]+)\s+([\d,\.]+)\s+([\d,\.]+)'
+    )
+
+    # Regex for corrupted date merge: pdfplumber sometimes merges the description
+    # text with the date column (e.g. "Top Perform Bonus Quarter1ly0/05/2025-10/18/2025")
+    # Captures the alphabetic part as description, then amounts after the corrupted date.
+    _RE_EARNING_CORRUPTED_DATE = re.compile(
+        r'^([A-Za-z].*?[A-Za-z])\d+[A-Za-z]*\d*/\d{2}/\d{4}-\d{2}/\d{2}/\d{4}\s+'
+        r'([\d\.]+)\s+([\d\.]+)\s+([\d,\.]+)\s+([\d,\.]+)$'
+    )
+
+    # Regex for YTD-only lines: earning types with no current-period activity
+    # (e.g. "Holiday 512.00" or "Vacation 256.00" — just description + YTD amount)
+    _RE_EARNING_YTD_ONLY = re.compile(
+        r'^([A-Za-z][A-Za-z\s\(\)]+?)\s+([\d,\.]+)$'
+    )
+
     def _parse_earnings(self, text: str) -> List[Dict[str, Any]]:
         """Extract earnings breakdown."""
         earnings = []
@@ -182,22 +202,44 @@ class APAccountServicesParser:
             if not line or line.startswith('Earnings') or line.startswith('Description'):
                 continue
 
-            # Parse earnings line
-            # Format: Description Dates Hours Rate Amount YTD
-            match = re.match(
-                r'([^\d]+?)\s+(\d{2}/\d{2}/\d{4}-\d{2}/\d{2}/\d{4})?\s*([\d\.]+)?\s+([\d\.]+)?\s+([\d,\.]+)\s+([\d,\.]+)',
-                line
-            )
-
+            # Try Pattern 1: Standard earnings line (Description Dates Hours Rate Amount YTD)
+            match = self._RE_EARNING_STANDARD.match(line)
             if match:
                 earnings.append({
                     "description": match.group(1).strip(),
-                    "dates": match.group(2).strip() if match.group(2) else None,
-                    "hours": self._parse_decimal(match.group(3)) if match.group(3) else None,
-                    "rate": self._parse_decimal(match.group(4)) if match.group(4) else None,
+                    "dates": match.group(2).strip(),
+                    "hours": self._parse_decimal(match.group(3)),
+                    "rate": self._parse_decimal(match.group(4)),
                     "amount": self._parse_decimal(match.group(5)),
                     "ytd": self._parse_decimal(match.group(6))
                 })
+                continue
+
+            # Try Pattern 2: Corrupted date merge (pdfplumber column bleed)
+            match = self._RE_EARNING_CORRUPTED_DATE.match(line)
+            if match:
+                earnings.append({
+                    "description": match.group(1).strip(),
+                    "dates": None,
+                    "hours": self._parse_decimal(match.group(2)),
+                    "rate": self._parse_decimal(match.group(3)),
+                    "amount": self._parse_decimal(match.group(4)),
+                    "ytd": self._parse_decimal(match.group(5))
+                })
+                continue
+
+            # Try Pattern 3: YTD-only line (no current-period activity)
+            match = self._RE_EARNING_YTD_ONLY.match(line)
+            if match:
+                earnings.append({
+                    "description": match.group(1).strip(),
+                    "dates": None,
+                    "hours": 0,
+                    "rate": 0,
+                    "amount": 0,
+                    "ytd": self._parse_decimal(match.group(2))
+                })
+                continue
 
         return earnings
 
