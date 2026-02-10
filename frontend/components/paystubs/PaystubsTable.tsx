@@ -81,6 +81,8 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
             <TableHead className="font-heading">Client</TableHead>
             <TableHead className="font-heading">Gross Pay</TableHead>
             <TableHead className="font-heading">Hours</TableHead>
+            <TableHead className="font-heading">Contractor Pay</TableHead>
+            <TableHead className="font-heading">Admin Pay</TableHead>
             <TableHead className="font-heading">Status</TableHead>
             <TableHead className="font-heading">Uploaded</TableHead>
             <TableHead className="text-right font-heading">Actions</TableHead>
@@ -131,6 +133,16 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {paystub.total_hours ? `${Number(paystub.total_hours).toFixed(2)} hrs` : '—'}
+              </TableCell>
+              <TableCell className="font-mono">
+                {paystub.contractor_amount != null
+                  ? formatCurrency(paystub.contractor_amount)
+                  : <span className="text-muted-foreground text-xs">—</span>}
+              </TableCell>
+              <TableCell className="font-mono">
+                {paystub.admin_amount != null
+                  ? formatCurrency(paystub.admin_amount)
+                  : <span className="text-muted-foreground text-xs">—</span>}
               </TableCell>
               <TableCell>
                 {paystub.auto_matched ? (

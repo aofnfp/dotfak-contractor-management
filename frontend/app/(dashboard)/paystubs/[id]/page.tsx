@@ -358,6 +358,54 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Payment Distribution */}
+      {paystub.payment_distribution && paystub.payment_distribution.length > 0 && (
+        <Card className="border-secondary">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-cta" />
+              <CardTitle>Payment Distribution</CardTitle>
+            </div>
+            <CardDescription>How net pay is distributed across bank accounts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-secondary/50">
+                    <TableHead className="font-heading">Bank</TableHead>
+                    <TableHead className="font-heading">Account</TableHead>
+                    <TableHead className="font-heading">Owner</TableHead>
+                    <TableHead className="font-heading text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paystub.payment_distribution.map((dist, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{dist.bank_name}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        ****{dist.account_last4}
+                        {dist.account_name && (
+                          <span className="text-muted-foreground ml-2">({dist.account_name})</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={dist.owner_type === 'contractor' ? 'default' : 'outline'}>
+                          {dist.owner_type === 'contractor' ? 'Contractor' : 'Admin'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(dist.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

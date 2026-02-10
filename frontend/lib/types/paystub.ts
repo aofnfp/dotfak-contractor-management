@@ -21,6 +21,7 @@ export interface Paystub {
   auto_matched: boolean
   created_at: string
   updated_at: string
+  payment_distribution?: PaymentDistribution[]
 }
 
 export interface PaystubWithDetails extends Paystub {
@@ -29,6 +30,8 @@ export interface PaystubWithDetails extends Paystub {
   client_name: string
   client_code: string
   uploader_email: string
+  contractor_amount: number | null
+  admin_amount: number | null
 }
 
 export interface PaystubData {
@@ -121,9 +124,18 @@ export interface TaxInfo {
 }
 
 export interface PaymentInfo {
-  bank: string
+  bank_name: string
   account_name: string
   account_number: string
+  amount: number
+  currency: string
+}
+
+export interface PaymentDistribution {
+  bank_name: string
+  account_last4: string
+  account_name: string
+  owner_type: 'contractor' | 'admin'
   amount: number
   currency: string
 }

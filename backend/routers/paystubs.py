@@ -412,10 +412,39 @@ async def list_paystubs(
 
         result = query.order("created_at", desc=True).limit(limit).execute()
 
+        # Batch fetch account splits for all paystubs (for contractor/admin amounts)
+        paystub_ids = [p['id'] for p in result.data or []]
+        splits_by_paystub = {}
+        if paystub_ids:
+            try:
+                splits_result = supabase_admin_client.table("paystub_account_splits").select(
+                    "paystub_id, amount, bank_account_id, bank_accounts!inner(owner_type)"
+                ).in_("paystub_id", paystub_ids).execute()
+
+                for split in splits_result.data or []:
+                    pid = split['paystub_id']
+                    if pid not in splits_by_paystub:
+                        splits_by_paystub[pid] = {'contractor': 0.0, 'admin': 0.0}
+                    owner_type = split['bank_accounts']['owner_type']
+                    splits_by_paystub[pid][owner_type] += float(split['amount'])
+            except Exception as split_err:
+                logger.warning(f"Failed to fetch account splits: {split_err}")
+
         # Enrich paystubs with contractor and client details
         enriched_paystubs = []
         for paystub in result.data or []:
             enriched = dict(paystub)
+
+            # Compute total hours from earnings in paystub_data
+            paystub_data = paystub.get('paystub_data') or {}
+            earnings_list = paystub_data.get('earnings', [])
+            total_hours = sum(float(e.get('hours') or 0) for e in earnings_list)
+            enriched['total_hours'] = total_hours if total_hours > 0 else None
+
+            # Add account split amounts (contractor vs admin)
+            splits = splits_by_paystub.get(paystub['id'])
+            enriched['contractor_amount'] = splits['contractor'] if splits else None
+            enriched['admin_amount'] = splits['admin'] if splits else None
 
             # Add contractor details
             if paystub.get('contractor_assignment_id'):
@@ -484,6 +513,12 @@ async def get_paystub(
 
         paystub = paystub_result.data[0]
 
+        # Compute total hours from earnings in paystub_data
+        paystub_data = paystub.get('paystub_data') or {}
+        earnings_list = paystub_data.get('earnings', [])
+        total_hours = sum(float(e.get('hours') or 0) for e in earnings_list)
+        paystub['total_hours'] = total_hours if total_hours > 0 else None
+
         # Get associated earnings if they exist
         if paystub.get('contractor_assignment_id'):
             earnings_result = supabase_admin_client.table("contractor_earnings").select("*").eq(
@@ -517,6 +552,30 @@ async def get_paystub(
             if client.data:
                 paystub['client_name'] = client.data[0]['name']
                 paystub['client_code'] = client.data[0]['code']
+
+        # Get payment distribution (account splits with bank details)
+        try:
+            splits_result = supabase_admin_client.table("paystub_account_splits").select(
+                "amount, currency, bank_accounts(bank_name, account_last4, account_name, owner_type)"
+            ).eq("paystub_id", paystub_id).execute()
+
+            if splits_result.data:
+                paystub['payment_distribution'] = [
+                    {
+                        'bank_name': s['bank_accounts']['bank_name'],
+                        'account_last4': s['bank_accounts']['account_last4'],
+                        'account_name': s['bank_accounts']['account_name'],
+                        'owner_type': s['bank_accounts']['owner_type'],
+                        'amount': float(s['amount']),
+                        'currency': s['currency'],
+                    }
+                    for s in splits_result.data
+                ]
+            else:
+                paystub['payment_distribution'] = []
+        except Exception as split_err:
+            logger.warning(f"Failed to fetch payment distribution: {split_err}")
+            paystub['payment_distribution'] = []
 
         return paystub
 
