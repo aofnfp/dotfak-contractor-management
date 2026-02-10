@@ -52,7 +52,9 @@ export default function EarningsPage() {
       pay_period_end: earning.pay_period_end || '',
       hours_worked: earning.client_total_hours || 0,
       client_gross_pay: earning.client_gross_pay || 0,
-      contractor_earnings: earning.contractor_total_earnings || 0,
+      regular_earnings: earning.contractor_regular_earnings || 0,
+      bonus_share: earning.contractor_bonus_share || 0,
+      total_earnings: earning.contractor_total_earnings || 0,
       amount_paid: earning.amount_paid || 0,
       amount_pending: earning.amount_pending || 0,
       payment_status: earning.payment_status || 'unpaid',
@@ -68,7 +70,9 @@ export default function EarningsPage() {
         { key: 'pay_period_end', label: 'Period End' },
         { key: 'hours_worked', label: 'Hours Worked' },
         { key: 'client_gross_pay', label: 'Client Gross Pay' },
-        { key: 'contractor_earnings', label: 'Contractor Earnings' },
+        { key: 'regular_earnings', label: 'Regular Earnings' },
+        { key: 'bonus_share', label: 'Bonus Share' },
+        { key: 'total_earnings', label: 'Total Earnings' },
         { key: 'amount_paid', label: 'Amount Paid' },
         { key: 'amount_pending', label: 'Amount Pending' },
         { key: 'payment_status', label: 'Payment Status' },
@@ -113,7 +117,7 @@ export default function EarningsPage() {
           ))}
         </div>
       ) : summary ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
@@ -124,7 +128,10 @@ export default function EarningsPage() {
                 {formatCurrency(summary.total_earnings)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Across all contractors
+                Regular: {formatCurrency(summary.total_regular)}
+                {summary.total_bonus > 0 && (
+                  <> + Bonus: <span className="text-amber-500">{formatCurrency(summary.total_bonus)}</span></>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -150,14 +157,33 @@ export default function EarningsPage() {
               <AlertCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">
-                {formatCurrency(summary.total_pending)}
+              <div className={`text-2xl font-bold ${summary.total_pending > 0 ? 'text-destructive' : summary.total_pending < 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                {summary.total_pending < 0
+                  ? `(${formatCurrency(Math.abs(summary.total_pending))})`
+                  : formatCurrency(summary.total_pending)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {summary.count_unpaid} unpaid, {summary.count_partially_paid} partial
               </p>
             </CardContent>
           </Card>
+
+          {summary.total_bonus > 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Bonuses</CardTitle>
+                <DollarSign className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-500">
+                  {formatCurrency(summary.total_bonus)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {summary.count_with_bonus} paycheck{summary.count_with_bonus !== 1 ? 's' : ''} with bonus
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : null}
 

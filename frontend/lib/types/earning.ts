@@ -38,12 +38,15 @@ export interface EarningWithDetails extends Earning {
  * Summary stats for earnings overview
  */
 export interface EarningsSummary {
+  total_regular: number
+  total_bonus: number
   total_earnings: number
   total_paid: number
   total_pending: number
   count_unpaid: number
   count_partially_paid: number
   count_paid: number
+  count_with_bonus: number
 }
 
 /**

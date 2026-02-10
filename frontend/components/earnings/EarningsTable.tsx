@@ -48,7 +48,10 @@ const getPaymentStatusBadge = (status: PaymentStatus) => {
 export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsTableProps) {
   // Memoize totals calculation to prevent recalculation on every render
   const totals = useMemo(() => ({
+    totalRegular: earnings.reduce((sum, e) => sum + e.contractor_regular_earnings, 0),
+    totalBonus: earnings.reduce((sum, e) => sum + e.contractor_bonus_share, 0),
     totalEarnings: earnings.reduce((sum, e) => sum + e.contractor_total_earnings, 0),
+    totalPaid: earnings.reduce((sum, e) => sum + e.amount_paid, 0),
     totalPending: earnings.reduce((sum, e) => sum + e.amount_pending, 0),
   }), [earnings])
 
@@ -79,6 +82,8 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
                 <TableHead className="font-heading">Contractor</TableHead>
                 <TableHead className="font-heading">Client</TableHead>
                 <TableHead className="font-heading text-right">Hours</TableHead>
+                <TableHead className="font-heading text-right">Regular</TableHead>
+                <TableHead className="font-heading text-right">Bonus</TableHead>
                 <TableHead className="font-heading text-right">Total Earnings</TableHead>
                 <TableHead className="font-heading text-right">Paid</TableHead>
                 <TableHead className="font-heading text-right">Pending</TableHead>
@@ -137,6 +142,20 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
                     {Number(earning.client_total_hours).toFixed(2)}
                   </TableCell>
 
+                  <TableCell className="text-right font-mono">
+                    {formatCurrency(earning.contractor_regular_earnings)}
+                  </TableCell>
+
+                  <TableCell className="text-right font-mono">
+                    {earning.contractor_bonus_share > 0 ? (
+                      <span className="text-amber-500 font-semibold">
+                        {formatCurrency(earning.contractor_bonus_share)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+
                   <TableCell className="text-right">
                     <span className="font-bold text-cta font-mono">
                       {formatCurrency(earning.contractor_total_earnings)}
@@ -152,11 +171,18 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
                       className={`font-mono ${
                         earning.amount_pending > 0
                           ? 'text-destructive font-semibold'
-                          : 'text-muted-foreground'
+                          : earning.amount_pending < 0
+                            ? 'text-amber-500 font-semibold'
+                            : 'text-muted-foreground'
                       }`}
                     >
-                      {formatCurrency(earning.amount_pending)}
+                      {earning.amount_pending < 0
+                        ? `(${formatCurrency(Math.abs(earning.amount_pending))})`
+                        : formatCurrency(earning.amount_pending)}
                     </span>
+                    {earning.amount_pending < 0 && (
+                      <div className="text-xs text-amber-500">overpaid</div>
+                    )}
                   </TableCell>
 
                   <TableCell>
@@ -205,15 +231,35 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
             </span>
             <div className="flex gap-6">
               <div>
-                <span className="text-muted-foreground">Total Earnings: </span>
+                <span className="text-muted-foreground">Regular: </span>
+                <span className="font-bold font-mono">
+                  {formatCurrency(totals.totalRegular)}
+                </span>
+              </div>
+              {totals.totalBonus > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Bonus: </span>
+                  <span className="font-bold text-amber-500 font-mono">
+                    {formatCurrency(totals.totalBonus)}
+                  </span>
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground">Total: </span>
                 <span className="font-bold text-cta font-mono">
                   {formatCurrency(totals.totalEarnings)}
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Total Pending: </span>
-                <span className="font-bold text-destructive font-mono">
-                  {formatCurrency(totals.totalPending)}
+                <span className="text-muted-foreground">Paid: </span>
+                <span className="font-bold text-cta font-mono">
+                  {formatCurrency(totals.totalPaid)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Pending: </span>
+                <span className={`font-bold font-mono ${totals.totalPending > 0 ? 'text-destructive' : totals.totalPending < 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                  {totals.totalPending < 0 ? `(${formatCurrency(Math.abs(totals.totalPending))})` : formatCurrency(totals.totalPending)}
                 </span>
               </div>
             </div>
