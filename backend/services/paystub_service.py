@@ -211,7 +211,8 @@ class PaystubService:
                 'company_margin': earnings['company_margin'],
                 'payment_status': earnings['payment_status'],
                 'amount_paid': earnings['amount_paid'],
-                'amount_pending': earnings['amount_pending']
+                'amount_pending': earnings['amount_pending'],
+                'earnings_breakdown': earnings.get('calculation_details'),
             }
 
             result = supabase_admin_client.table("contractor_earnings").insert(earnings_record).execute()

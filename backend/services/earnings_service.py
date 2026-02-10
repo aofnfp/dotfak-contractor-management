@@ -61,6 +61,71 @@ class EarningsCalculator:
     ]
 
     @staticmethod
+    def _get_base_rate(earnings_list: List[Dict]) -> Optional[Decimal]:
+        """Extract the base hourly rate from the 'Regular' earning line."""
+        for e in earnings_list:
+            if 'regular' in e.get('description', '').lower():
+                rate = e.get('rate', 0)
+                if rate and float(rate) > 0:
+                    return Decimal(str(rate))
+        return None
+
+    @staticmethod
+    def _has_overtime_premium(earnings_list: List[Dict]) -> bool:
+        """Check if there's an Overtime Premium companion line."""
+        return any(
+            'overtime premium' in e.get('description', '').lower()
+            for e in earnings_list
+        )
+
+    @staticmethod
+    def _get_earning_multiplier(
+        description: str,
+        rate: Decimal,
+        base_rate: Optional[Decimal],
+        has_ot_premium: bool
+    ) -> Optional[Decimal]:
+        """
+        Determine the rate multiplier for an earning line.
+
+        Mirrors the client company's pay structure:
+        - Regular: 1.0x
+        - Overtime (with premium companion): 1.5x (time and a half)
+        - Holiday/Vacation/etc: derived from rate vs base rate
+        - Supplemental lines (Premium, Differential, GTL): skipped (returns None)
+
+        Returns None for lines that should be skipped (supplemental).
+        """
+        desc = description.lower()
+
+        # Skip supplemental lines — they don't contribute independent hours
+        if any(kw in desc for kw in EarningsCalculator.SUPPLEMENTAL_HOUR_KEYWORDS):
+            return None
+
+        # Overtime with premium companion = time and a half
+        if 'overtime' in desc:
+            if has_ot_premium:
+                return Decimal('1.5')
+            # No premium line — derive from rate comparison
+            if base_rate and base_rate > 0 and rate and rate > 0:
+                raw = rate / base_rate
+                return (raw * 2).quantize(Decimal('1'), rounding=ROUND_HALF_UP) / 2
+            return Decimal('1.5')  # Default OT
+
+        # Double time
+        if 'double time' in desc:
+            return Decimal('2.0')
+
+        # For other earning types (Regular, Holiday, Vacation, Sick, PTO)
+        # Compare rate to base rate
+        if base_rate and base_rate > 0 and rate and rate > 0:
+            raw = rate / base_rate
+            # Round to nearest 0.5 (handles 1.0, 1.5, 2.0)
+            return (raw * 2).quantize(Decimal('1'), rounding=ROUND_HALF_UP) / 2
+
+        return Decimal('1.0')  # Default
+
+    @staticmethod
     def identify_bonuses(earnings_list: List[Dict]) -> tuple[List[Dict], List[Dict]]:
         """
         Identify bonus vs regular earnings from earnings list.
@@ -128,12 +193,55 @@ class EarningsCalculator:
 
             # Calculate contractor's regular earnings based on rate type
             rate_type = assignment['rate_type']
+            earnings_breakdown = []
+            client_base_rate = None
 
             if rate_type == 'fixed':
-                # Fixed hourly rate (e.g., $4/hr)
+                # Fixed hourly rate with per-line multipliers
+                # Mirrors the client company's pay structure (e.g., 1.5x for overtime)
                 fixed_rate = Decimal(str(assignment['fixed_hourly_rate']))
-                contractor_regular = (total_hours * fixed_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                logger.info(f"Fixed rate calculation: {total_hours} hrs × ${fixed_rate}/hr = ${contractor_regular}")
+
+                # Determine base rate and OT premium pattern from client paystub
+                base_rate = EarningsCalculator._get_base_rate(earnings_list)
+                client_base_rate = float(base_rate) if base_rate else None
+                has_ot_premium = EarningsCalculator._has_overtime_premium(earnings_list)
+
+                contractor_regular = Decimal('0')
+                earnings_breakdown = []
+
+                for e in regular_earnings:
+                    hours = Decimal(str(e.get('hours', 0)))
+                    rate = Decimal(str(e.get('rate', 0)))
+                    desc = e.get('description', '')
+
+                    if hours <= 0:
+                        continue
+
+                    multiplier = EarningsCalculator._get_earning_multiplier(
+                        desc, rate, base_rate, has_ot_premium
+                    )
+                    if multiplier is None:
+                        continue  # Skip supplemental lines
+
+                    line_pay = (hours * fixed_rate * multiplier).quantize(
+                        Decimal('0.01'), rounding=ROUND_HALF_UP
+                    )
+                    contractor_regular += line_pay
+
+                    earnings_breakdown.append({
+                        'description': desc,
+                        'hours': float(hours),
+                        'multiplier': float(multiplier),
+                        'contractor_rate': float((fixed_rate * multiplier).quantize(
+                            Decimal('0.01'), rounding=ROUND_HALF_UP
+                        )),
+                        'amount': float(line_pay),
+                    })
+
+                logger.info(
+                    f"Fixed rate calculation: base=${fixed_rate}/hr, "
+                    f"breakdown={earnings_breakdown}, total=${contractor_regular}"
+                )
 
             elif rate_type == 'percentage':
                 # Percentage of regular earnings only (not bonuses)
@@ -174,7 +282,9 @@ class EarningsCalculator:
                     'regular_earnings_count': len(regular_earnings),
                     'bonus_count': len(bonuses),
                     'regular_total': float(regular_total),
-                    'bonus_total': float(bonus_total)
+                    'bonus_total': float(bonus_total),
+                    'earnings_breakdown': earnings_breakdown,
+                    'client_base_rate': client_base_rate,
                 }
             }
 
