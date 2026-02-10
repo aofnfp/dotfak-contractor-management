@@ -76,6 +76,12 @@ class EmailService:
                             "contentType": "HTML",
                             "content": html_body,
                         },
+                        "from": {
+                            "emailAddress": {
+                                "address": self.sender_email,
+                                "name": "DotFak Onboarding",
+                            }
+                        },
                         "toRecipients": [
                             {"emailAddress": {"address": to_email}}
                         ],
