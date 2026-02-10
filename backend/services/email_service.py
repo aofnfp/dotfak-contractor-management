@@ -48,7 +48,10 @@ class EmailService:
                     "grant_type": "client_credentials",
                 },
             )
-            response.raise_for_status()
+            if response.status_code != 200:
+                error_detail = response.text
+                logger.error(f"OAuth2 token request failed: {response.status_code} {error_detail}")
+                raise Exception(f"OAuth2 token error {response.status_code}: {error_detail}")
             data = response.json()
             self._access_token = data["access_token"]
             self._token_expires_at = time.time() + data.get("expires_in", 3600)

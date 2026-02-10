@@ -117,15 +117,23 @@ async def root():
 
 @app.get("/debug/email-config")
 async def debug_email_config():
-    """Debug endpoint to check if email service is configured."""
+    """Debug endpoint to check if email service is configured and test token."""
     from backend.services.email_service import email_service
-    return {
+    result = {
         "is_configured": email_service.is_configured,
         "has_client_id": bool(email_service.client_id),
         "has_client_secret": bool(email_service.client_secret),
         "has_tenant_id": bool(email_service.tenant_id),
         "sender_email": email_service.sender_email or "(not set)",
+        "token_test": None,
     }
+    if email_service.is_configured:
+        try:
+            token = await email_service._get_access_token()
+            result["token_test"] = "SUCCESS" if token else "FAILED - no token returned"
+        except Exception as e:
+            result["token_test"] = f"FAILED: {str(e)}"
+    return result
 
 
 @app.get("/debug/parser-version")
