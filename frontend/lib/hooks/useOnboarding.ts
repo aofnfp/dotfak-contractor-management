@@ -54,6 +54,8 @@ export function useVerifyToken(token: string) {
     queryFn: () => onboardingApi.verifyToken(token),
     enabled: !!token,
     retry: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
   })
 }
 
