@@ -17,8 +17,9 @@ import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
-import { DollarSign, CheckCircle2, AlertCircle, Download } from 'lucide-react'
+import { DollarSign, CheckCircle2, AlertCircle, Download, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import type { PaymentStatus } from '@/lib/types/earning'
 
 export default function EarningsPage() {
@@ -91,15 +92,23 @@ export default function EarningsPage() {
             View and manage contractor earnings from paystubs
           </p>
         </div>
-        <Button
-          onClick={handleExport}
-          disabled={!earnings || earnings.length === 0 || isLoading}
-          variant="outline"
-          className="gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex gap-3">
+          <Link href="/earnings/unpaid">
+            <Button className="bg-cta hover:bg-cta/90 gap-2">
+              <CreditCard className="h-4 w-4" />
+              Unpaid Earnings
+            </Button>
+          </Link>
+          <Button
+            onClick={handleExport}
+            disabled={!earnings || earnings.length === 0 || isLoading}
+            variant="outline"
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
