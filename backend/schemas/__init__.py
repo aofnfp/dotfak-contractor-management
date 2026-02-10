@@ -26,6 +26,25 @@ from backend.schemas.payment import (
     AllocationRequest,
 )
 
+from backend.schemas.onboarding import (
+    InvitationCreate,
+    InvitationResponse,
+    OnboardingStatusItem,
+    VerifyTokenResponse,
+    SetupAccountRequest,
+    SetupAccountResponse,
+    UpdateProfileRequest,
+    CompleteProfileResponse,
+)
+
+from backend.schemas.contract import (
+    ContractResponse,
+    ContractListItem,
+    SignContractRequest,
+    SignatureResponse,
+    GenerateAmendmentRequest,
+)
+
 from backend.schemas.bank_account import (
     BankAccountBase,
     BankAccountCreate,
@@ -74,4 +93,17 @@ __all__ = [
     "PaystubAccountSplitCreate",
     "PaystubAccountSplitResponse",
     "PaystubAccountSplitWithDetails",
+    "InvitationCreate",
+    "InvitationResponse",
+    "OnboardingStatusItem",
+    "VerifyTokenResponse",
+    "SetupAccountRequest",
+    "SetupAccountResponse",
+    "UpdateProfileRequest",
+    "CompleteProfileResponse",
+    "ContractResponse",
+    "ContractListItem",
+    "SignContractRequest",
+    "SignatureResponse",
+    "GenerateAmendmentRequest",
 ]

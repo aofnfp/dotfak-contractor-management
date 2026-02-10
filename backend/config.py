@@ -31,6 +31,12 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 # Environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
+# Microsoft Graph API (email service)
+MS_GRAPH_CLIENT_ID = os.getenv("MS_GRAPH_CLIENT_ID")
+MS_GRAPH_CLIENT_SECRET = os.getenv("MS_GRAPH_CLIENT_SECRET")
+MS_GRAPH_TENANT_ID = os.getenv("MS_GRAPH_TENANT_ID")
+MS_GRAPH_SENDER_EMAIL = os.getenv("MS_GRAPH_SENDER_EMAIL")
+
 # Validate required environment variables
 if not all([SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY, DATABASE_URL]):
     raise ValueError(

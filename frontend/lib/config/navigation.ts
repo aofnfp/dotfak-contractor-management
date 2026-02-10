@@ -5,6 +5,8 @@ import {
   FileText,
   DollarSign,
   CreditCard,
+  UserCheck,
+  FileSignature,
 } from 'lucide-react'
 import type { NavSection } from '@/lib/types/navigation'
 
@@ -46,6 +48,23 @@ export const navigationConfig: NavSection[] = [
         href: '/paystubs',
         icon: FileText,
         description: 'Upload and view paystubs',
+      },
+    ],
+  },
+  {
+    title: 'Onboarding',
+    items: [
+      {
+        title: 'Onboarding',
+        href: '/onboarding',
+        icon: UserCheck,
+        description: 'Contractor invitations and setup',
+      },
+      {
+        title: 'Contracts',
+        href: '/contracts',
+        icon: FileSignature,
+        description: 'Agreements and signatures',
       },
     ],
   },

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: letter; margin: 1in; }
+  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-height: 1.6; color: #222; }
+  h1 { text-align: center; font-size: 18pt; margin-bottom: 4px; color: #1a1a2e; }
+  h2 { font-size: 13pt; margin-top: 24px; margin-bottom: 8px; color: #1a1a2e; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header .subtitle { font-size: 11pt; color: #555; margin-top: 0; }
+  .parties { margin: 20px 0; }
+  .parties p { margin: 4px 0; }
+  .section { margin-bottom: 16px; }
+  .section p { margin: 6px 0; text-align: justify; }
+  .indent { margin-left: 24px; }
+  .signature-block { margin-top: 50px; page-break-inside: avoid; }
+  .sig-row { display: flex; justify-content: space-between; margin-top: 40px; }
+  .sig-party { width: 45%; }
+  .sig-party .sig-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 4px; }
+  .sig-party .sig-placeholder { min-height: 60px; }
+  .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #999; }
+  ul { margin: 6px 0; padding-left: 24px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>INDEPENDENT CONTRACTOR AGREEMENT</h1>
+  <p class="subtitle">Dotfak Group LLC</p>
+</div>
+
+<p style="text-align: center; font-size: 11pt; color: #555;">
+  Effective Date: {{ contract_date }}
+</p>
+
+<!-- SECTION 1: PARTIES -->
+<h2>1. Parties</h2>
+<div class="section">
+  <p>This Independent Contractor Agreement ("Agreement") is entered into as of <strong>{{ contract_date }}</strong> by and between:</p>
+  <div class="indent">
+    <p><strong>{{ company_name }}</strong>, a limited liability company organized under the laws of the State of Texas, United States of America, with its principal place of business in {{ company_address }} (hereinafter referred to as the "Company"),</p>
+    <p>and</p>
+    <p><strong>{{ contractor_name }}</strong>, an individual residing at {{ contractor_address }}, {{ contractor_country_name }} (hereinafter referred to as the "Contractor").</p>
+  </div>
+  <p>The Company and the Contractor are individually referred to as a "Party" and collectively as the "Parties."</p>
+</div>
+
+<!-- SECTION 2: ENGAGEMENT & SERVICES -->
+<h2>2. Engagement and Services</h2>
+<div class="section">
+  <p>The Company hereby engages the Contractor, and the Contractor agrees to perform services for the Company's client, <strong>{{ client_company_name }}</strong> (the "Client"), as directed by the Company. The Contractor shall perform all duties and responsibilities reasonably associated with the assigned role at the Client's organization with professionalism, diligence, and in compliance with all applicable policies and procedures.</p>
+</div>
+
+<!-- SECTION 3: TERM -->
+<h2>3. Term</h2>
+<div class="section">
+  <p>This Agreement shall be effective as of <strong>{{ start_date }}</strong> and shall continue on an at-will basis until terminated by either Party in accordance with Section 16 of this Agreement.</p>
+</div>
+
+<!-- SECTION 4: COMPENSATION -->
+<h2>4. Compensation</h2>
+<div class="section">
+  {% if rate_type == 'fixed' %}
+  <p>The Contractor shall be compensated at the rate of <strong>${{ "%.2f"|format(fixed_hourly_rate) }} USD per hour</strong> for all hours worked and approved by the Client.</p>
+  {% elif rate_type == 'percentage' %}
+  <p>The Contractor shall be compensated at the rate of <strong>{{ "%.1f"|format(percentage_rate) }}%</strong> of the gross amount billed by the Company to the Client for the Contractor's services.</p>
+  {% endif %}
+  <p><strong>Compensation under this Agreement is fixed and non-negotiable for the duration of this Agreement.</strong> Adjustments to compensation shall only be considered in the event of an increase in the rate paid by the Client to the Company, and any such adjustment shall be at the sole discretion of the Company.</p>
+</div>
+
+<!-- SECTION 5: BONUS SHARING -->
+<h2>5. Performance Bonus</h2>
+<div class="section">
+  <p>In the event that the Client awards performance bonuses or incentive payments related to the Contractor's work, such bonuses shall be shared between the Parties as follows:</p>
+  <ul>
+    <li><strong>{{ "%.0f"|format(bonus_split_percentage) }}%</strong> to the Contractor</li>
+    <li><strong>{{ "%.0f"|format(company_bonus_percentage) }}%</strong> to the Company</li>
+  </ul>
+  <p>The Company shall process and distribute the Contractor's share of any bonus within the regular payment cycle following receipt from the Client.</p>
+</div>
+
+<!-- SECTION 6: HOLIDAYS & LEAVE -->
+<h2>6. Holidays and Leave</h2>
+<div class="section">
+  <p>Holiday and leave entitlements shall be governed by the policies of the Client, <strong>{{ client_company_name }}</strong>. The Contractor may request time off in accordance with the Client's holiday and leave schedule. The Company shall facilitate such requests but makes no independent guarantee of paid holidays or leave beyond what the Client provides.</p>
+</div>
+
+<!-- SECTION 7: PAYMENT TERMS -->
+<h2>7. Payment Terms</h2>
+<div class="section">
+  <p>Payments to the Contractor shall be processed via direct bank deposit within five (5) business days following the Company's receipt of corresponding payment from the Client. The Contractor acknowledges that the Company's payment obligations are contingent upon the Company's receipt of funds from the Client.</p>
+  <p>No advance payments shall be made. The Contractor is responsible for providing accurate and current banking information to the Company for payment processing.</p>
+</div>
+
+<!-- SECTION 8: EQUIPMENT & DEVICES -->
+<h2>8. Equipment and Devices</h2>
+<div class="section">
+  <p>The Contractor shall be solely responsible for all equipment, devices, and tools provided or made available for the performance of services under this Agreement. The Contractor shall:</p>
+  <ul>
+    <li>Maintain all equipment in good working condition;</li>
+    <li>Use equipment solely for authorized business purposes;</li>
+    <li>Return all Company and Client equipment within <strong>forty-eight (48) hours</strong> of termination of this Agreement, regardless of the reason for termination;</li>
+    <li>Bear financial responsibility for any loss, damage, or failure to return equipment.</li>
+  </ul>
+  <p>Failure to return equipment within the specified timeframe may result in deduction from the Contractor's final payment or other remedies available to the Company.</p>
+</div>
+
+<!-- SECTION 9: CONFIDENTIALITY & NDA -->
+<h2>9. Confidentiality and Non-Disclosure</h2>
+<div class="section">
+  <p>The Contractor acknowledges that during the course of this engagement, they may have access to confidential and proprietary information belonging to the Company, the Client, or their respective affiliates ("Confidential Information"). The Contractor agrees to:</p>
+  <ul>
+    <li>Not disclose, share, or otherwise make available any Confidential Information to any third party without prior written consent;</li>
+    <li>Use Confidential Information solely for the purpose of performing services under this Agreement;</li>
+    <li>Take all reasonable measures to protect the confidentiality of such information;</li>
+    <li>Return or destroy all Confidential Information upon termination of this Agreement.</li>
+  </ul>
+  <p>This confidentiality obligation shall survive the termination of this Agreement for a period of <strong>two (2) years</strong>.</p>
+</div>
+
+<!-- SECTION 10: DATA PRIVACY & SECURITY -->
+<h2>10. Data Privacy and Security</h2>
+<div class="section">
+  <p>The Contractor shall handle all data in accordance with applicable privacy and data protection laws. The Contractor agrees to:</p>
+  <ul>
+    <li>Not store Client or Company data on personal devices beyond what is strictly necessary for the performance of services;</li>
+    <li>Use secure and encrypted methods for data transmission and storage;</li>
+    <li>Report any data breach, security incident, or suspected unauthorized access to the Company within <strong>twenty-four (24) hours</strong> of discovery;</li>
+    <li>Comply with all data handling policies provided by the Company or Client.</li>
+  </ul>
+</div>
+
+<!-- SECTION 11: LOCATION & WORKSPACE PRIVACY -->
+<h2>11. Workspace Requirements</h2>
+<div class="section">
+  <p>The Contractor shall perform all services from a private and secure location that is suitable for handling confidential business information. The Contractor specifically agrees to:</p>
+  <ul>
+    <li>Work from a dedicated workspace that provides visual and auditory privacy;</li>
+    <li>Not perform services from public spaces such as cafes, libraries, or open co-working areas without private rooms;</li>
+    <li>Ensure that screens displaying Client or Company information are not visible to unauthorized individuals;</li>
+    <li>Use a privacy screen on all work devices when applicable.</li>
+  </ul>
+</div>
+
+<!-- SECTION 12: INTELLECTUAL PROPERTY -->
+<h2>12. Intellectual Property</h2>
+<div class="section">
+  <p>All work product, deliverables, inventions, documents, software, designs, and other materials created by the Contractor in the course of performing services under this Agreement ("Work Product") shall be the sole and exclusive property of the Company and/or the Client, as applicable. The Contractor hereby assigns all rights, title, and interest in such Work Product to the Company.</p>
+</div>
+
+<!-- SECTION 13: NON-SOLICITATION -->
+<h2>13. Non-Solicitation</h2>
+<div class="section">
+  <p>During the term of this Agreement and for a period of <strong>twelve (12) months</strong> following its termination, the Contractor shall not, directly or indirectly:</p>
+  <ul>
+    <li>Solicit, recruit, or attempt to hire any contractor, employee, or consultant engaged by the Company;</li>
+    <li>Solicit or attempt to divert business from any client of the Company with whom the Contractor had contact during the term of this Agreement.</li>
+  </ul>
+</div>
+
+<!-- SECTION 14: INDEPENDENT CONTRACTOR STATUS -->
+<h2>14. Independent Contractor Status</h2>
+<div class="section">
+  <p>The Contractor is an independent contractor and not an employee, agent, partner, or joint venturer of the Company. The Contractor shall be solely responsible for:</p>
+  <ul>
+    <li>All tax obligations in their jurisdiction of residence, including income tax, self-employment tax, and any applicable withholdings;</li>
+    <li>Obtaining and maintaining any required business licenses or permits;</li>
+    <li>Their own health insurance, retirement savings, and other benefits.</li>
+  </ul>
+  <p>The Company shall not withhold taxes, provide employee benefits, or make contributions to social security, unemployment insurance, or workers' compensation on behalf of the Contractor.</p>
+</div>
+
+<!-- SECTION 15: LIABILITY & INDEMNIFICATION -->
+<h2>15. Liability and Indemnification</h2>
+<div class="section">
+  <p>The Contractor shall indemnify, defend, and hold harmless the Company, its officers, directors, employees, and agents from and against any and all claims, damages, losses, liabilities, and expenses (including reasonable attorney's fees) arising out of or related to:</p>
+  <ul>
+    <li>The Contractor's breach of any term of this Agreement;</li>
+    <li>The Contractor's negligence or willful misconduct;</li>
+    <li>Any claim by a third party related to the Contractor's performance of services.</li>
+  </ul>
+</div>
+
+<!-- SECTION 16: TERMINATION -->
+<h2>16. Termination</h2>
+<div class="section">
+  <p>Either Party may terminate this Agreement by providing <strong>thirty (30) days</strong> written notice to the other Party. The Company reserves the right to terminate this Agreement immediately and without notice for cause, including but not limited to:</p>
+  <ul>
+    <li>Material breach of any provision of this Agreement;</li>
+    <li>Gross misconduct or insubordination;</li>
+    <li>Substantiated complaints from the Client regarding the Contractor's performance or behavior;</li>
+    <li>Violation of confidentiality, data privacy, or security obligations;</li>
+    <li>Failure to return equipment within the specified timeframe.</li>
+  </ul>
+  <p>Upon termination, the Contractor shall:</p>
+  <ul>
+    <li>Immediately cease all work and return all equipment within <strong>forty-eight (48) hours</strong>;</li>
+    <li>Return or destroy all Confidential Information in their possession;</li>
+    <li>Provide final invoicing for approved and completed work.</li>
+  </ul>
+  <p>Final payment shall be processed in accordance with Section 7, less any deductions for unreturned equipment or other amounts owed to the Company.</p>
+</div>
+
+<!-- SECTION 17: DISPUTE RESOLUTION -->
+<h2>17. Dispute Resolution</h2>
+<div class="section">
+  <p>This Agreement shall be governed by and construed in accordance with {{ jurisdiction_law }}.</p>
+  <p>Any dispute, controversy, or claim arising out of or relating to this Agreement shall be resolved through {{ jurisdiction_venue }}. The prevailing Party in any such proceeding shall be entitled to recover reasonable attorney's fees and costs.</p>
+</div>
+
+<!-- SECTION 18: GENERAL PROVISIONS -->
+<h2>18. General Provisions</h2>
+<div class="section">
+  <p><strong>Amendments.</strong> This Agreement may only be amended or modified by a written instrument signed by both Parties.</p>
+  <p><strong>Severability.</strong> If any provision of this Agreement is found to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.</p>
+  <p><strong>Entire Agreement.</strong> This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior agreements, understandings, and representations.</p>
+  <p><strong>Waiver.</strong> The failure of either Party to enforce any provision of this Agreement shall not constitute a waiver of that provision or any other provision.</p>
+  <p><strong>Assignment.</strong> The Contractor may not assign or transfer this Agreement or any rights hereunder without the prior written consent of the Company.</p>
+</div>
+
+<!-- SECTION 19: SIGNATURES -->
+<h2>19. Signatures</h2>
+<div class="signature-block">
+  <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.</p>
+
+  <div class="sig-row">
+    <div class="sig-party">
+      <p><strong>FOR THE COMPANY:</strong></p>
+      <p>{{ company_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_ADMIN -->
+      </div>
+      <div class="sig-line">
+        <p>{{ company_representative }}, {{ company_title }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+
+    <div class="sig-party">
+      <p><strong>FOR THE CONTRACTOR:</strong></p>
+      <p>{{ contractor_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_CONTRACTOR -->
+      </div>
+      <div class="sig-line">
+        <p>{{ contractor_name }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>{{ company_name }} &bull; {{ company_address }} &bull; {{ contract_year }}</p>
+</div>
+
+</body>
+</html>

@@ -347,6 +347,15 @@ async def update_assignment(
 
             validate_rate_structure(rate_type, fixed_hourly_rate, percentage_rate)
 
+        # Capture old values for amendment detection
+        old_assignment = None
+        if any(f in update_data for f in ("rate_type", "fixed_hourly_rate", "percentage_rate", "bonus_split_percentage")):
+            old_query = supabase_admin_client.table("contractor_assignments").select("*").eq(
+                "id", assignment_id
+            ).execute()
+            if old_query.data:
+                old_assignment = old_query.data[0]
+
         # Update assignment
         result = supabase_admin_client.table("contractor_assignments").update(update_data).eq(
             "id", assignment_id
@@ -357,6 +366,26 @@ async def update_assignment(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Assignment not found"
             )
+
+        # Auto-generate contract amendment if material terms changed
+        if old_assignment:
+            try:
+                from backend.services.contract_service import ContractService
+                changes = ContractService.detect_material_changes(old_assignment, result.data[0])
+                if changes:
+                    existing = supabase_admin_client.table("contracts").select("id").eq(
+                        "assignment_id", assignment_id
+                    ).eq("status", "fully_executed").order("version", desc=True).limit(1).execute()
+
+                    if existing.data:
+                        ContractService.generate_amendment(
+                            parent_contract_id=existing.data[0]["id"],
+                            assignment_id=assignment_id,
+                            changes=changes,
+                        )
+                        logger.info(f"Amendment auto-generated for assignment {assignment_id}")
+            except Exception as e:
+                logger.warning(f"Failed to auto-generate amendment: {e}")
 
         logger.info(f"Assignment updated: {assignment_id}")
         return result.data[0]

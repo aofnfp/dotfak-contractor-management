@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: letter; margin: 1in; }
+  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-height: 1.6; color: #222; }
+  h1 { text-align: center; font-size: 18pt; margin-bottom: 4px; color: #1a1a2e; }
+  h2 { font-size: 13pt; margin-top: 24px; margin-bottom: 8px; color: #1a1a2e; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header .subtitle { font-size: 11pt; color: #555; margin-top: 0; }
+  .section { margin-bottom: 16px; }
+  .section p { margin: 6px 0; text-align: justify; }
+  .change-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .change-table th, .change-table td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+  .change-table th { background: #f0f0f0; font-weight: bold; }
+  .signature-block { margin-top: 50px; page-break-inside: avoid; }
+  .sig-row { display: flex; justify-content: space-between; margin-top: 40px; }
+  .sig-party { width: 45%; }
+  .sig-party .sig-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 4px; }
+  .sig-party .sig-placeholder { min-height: 60px; }
+  .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>AMENDMENT TO INDEPENDENT CONTRACTOR AGREEMENT</h1>
+  <p class="subtitle">Dotfak Group LLC</p>
+</div>
+
+<p style="text-align: center; font-size: 11pt; color: #555;">
+  Amendment Date: {{ amendment_date }}
+</p>
+
+<div class="section">
+  <p>This Amendment ("Amendment") is entered into as of <strong>{{ amendment_date }}</strong> by and between:</p>
+  <p><strong>{{ company_name }}</strong> ("Company") and <strong>{{ contractor_name }}</strong> ("Contractor"),</p>
+  <p>and amends the Independent Contractor Agreement originally executed on <strong>{{ parent_contract_date }}</strong> (the "Original Agreement").</p>
+</div>
+
+<h2>Amended Terms</h2>
+<div class="section">
+  <p>The Parties agree to amend the following terms of the Original Agreement:</p>
+
+  <table class="change-table">
+    <thead>
+      <tr>
+        <th>Term</th>
+        <th>Previous</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for field, vals in changes.items() %}
+      <tr>
+        <td>
+          {% if field == 'rate_type' %}Rate Type
+          {% elif field == 'fixed_hourly_rate' %}Hourly Rate
+          {% elif field == 'percentage_rate' %}Percentage Rate
+          {% elif field == 'bonus_split_percentage' %}Bonus Split (Contractor %)
+          {% else %}{{ field }}
+          {% endif %}
+        </td>
+        <td>
+          {% if field == 'fixed_hourly_rate' %}${{ "%.2f"|format(vals.old|float) }} / hour
+          {% elif field == 'percentage_rate' %}{{ vals.old }}%
+          {% elif field == 'bonus_split_percentage' %}{{ vals.old }}%
+          {% else %}{{ vals.old }}
+          {% endif %}
+        </td>
+        <td>
+          {% if field == 'fixed_hourly_rate' %}${{ "%.2f"|format(vals.new|float) }} / hour
+          {% elif field == 'percentage_rate' %}{{ vals.new }}%
+          {% elif field == 'bonus_split_percentage' %}{{ vals.new }}%
+          {% else %}{{ vals.new }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>Continuing Effect</h2>
+<div class="section">
+  <p>All other terms and conditions of the Original Agreement that are not expressly amended by this Amendment shall remain in full force and effect. In the event of any conflict between this Amendment and the Original Agreement, the terms of this Amendment shall prevail.</p>
+</div>
+
+<h2>Signatures</h2>
+<div class="signature-block">
+  <p>IN WITNESS WHEREOF, the Parties have executed this Amendment as of the date first written above.</p>
+
+  <div class="sig-row">
+    <div class="sig-party">
+      <p><strong>FOR THE COMPANY:</strong></p>
+      <p>{{ company_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_ADMIN -->
+      </div>
+      <div class="sig-line">
+        <p>{{ company_representative }}, {{ company_title }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+
+    <div class="sig-party">
+      <p><strong>FOR THE CONTRACTOR:</strong></p>
+      <p>{{ contractor_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_CONTRACTOR -->
+      </div>
+      <div class="sig-line">
+        <p>{{ contractor_name }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>{{ company_name }} &bull; {{ company_address }} &bull; {{ contract_year }}</p>
+</div>
+
+</body>
+</html>
