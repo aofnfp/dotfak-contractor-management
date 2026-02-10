@@ -21,8 +21,39 @@ export interface Earning {
   payment_status: PaymentStatus
   amount_paid: number
   amount_pending: number
+  earnings_breakdown?: EarningsBreakdown
+  payment_variance?: number
+  variance_status?: string
   created_at: string
   updated_at: string
+}
+
+export interface EarningsBreakdownLine {
+  description: string
+  hours: number
+  multiplier: number
+  contractor_rate: number
+  amount: number
+}
+
+export interface BonusItem {
+  description: string
+  client_amount: number
+  contractor_share: number
+  split_percentage: number
+}
+
+export interface EarningsBreakdown {
+  rate_type: string
+  rate_value: number
+  client_base_rate: number | null
+  regular_total: number
+  regular_earnings_count: number
+  bonus_count: number
+  bonus_total: number
+  bonus_split_percentage: number
+  bonus_items?: BonusItem[]
+  earnings_breakdown: EarningsBreakdownLine[]
 }
 
 export interface EarningWithDetails extends Earning {

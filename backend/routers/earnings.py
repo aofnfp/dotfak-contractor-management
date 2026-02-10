@@ -306,6 +306,41 @@ async def get_earning(
 
         earning = earning_result.data[0]
 
+        # Enrich with contractor + client details
+        if earning.get('contractor_assignment_id'):
+            assignment_result = supabase_admin_client.table("contractor_assignments").select(
+                "contractor_id, client_company_id"
+            ).eq("id", earning["contractor_assignment_id"]).execute()
+
+            if assignment_result.data:
+                a = assignment_result.data[0]
+
+                # Get contractor info
+                contractor_result = supabase_admin_client.table("contractors").select(
+                    "first_name, last_name, contractor_code"
+                ).eq("id", a['contractor_id']).execute()
+                if contractor_result.data:
+                    c = contractor_result.data[0]
+                    earning['contractor_name'] = f"{c['first_name']} {c['last_name']}"
+                    earning['contractor_code'] = c['contractor_code']
+
+                # Get client company info
+                client_result = supabase_admin_client.table("client_companies").select(
+                    "name, code"
+                ).eq("id", a['client_company_id']).execute()
+                if client_result.data:
+                    earning['client_name'] = client_result.data[0]['name']
+                    earning['client_code'] = client_result.data[0]['code']
+
+        # Enrich with paystub info
+        if earning.get('paystub_id'):
+            paystub_result = supabase_admin_client.table("paystubs").select(
+                "file_name, check_date"
+            ).eq("id", earning["paystub_id"]).execute()
+            if paystub_result.data:
+                earning['paystub_file_name'] = paystub_result.data[0].get('file_name')
+                earning['paystub_check_date'] = paystub_result.data[0].get('check_date')
+
         # Check authorization for contractors
         if user.get("role") != "admin":
             # Get contractor's assignment IDs
@@ -335,7 +370,10 @@ async def get_earning(
                 'payment_status': earning['payment_status'],
                 'amount_paid': earning['amount_paid'],
                 'amount_pending': earning['amount_pending'],
-                'created_at': earning['created_at']
+                'earnings_breakdown': earning.get('earnings_breakdown'),
+                'contractor_name': earning.get('contractor_name', ''),
+                'contractor_code': earning.get('contractor_code', ''),
+                'created_at': earning['created_at'],
             }
             return filtered_earning
 

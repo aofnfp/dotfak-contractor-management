@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { FileText, User, Building2 } from 'lucide-react'
+import { FileText, Eye, User, Building2 } from 'lucide-react'
 import type { EarningWithDetails } from '@/lib/types/earning'
 import type { PaymentStatus } from '@/lib/types/earning'
 
@@ -191,6 +191,17 @@ export const EarningsTable = memo(function EarningsTable({ earnings }: EarningsT
 
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
+                      <Link href={`/earnings/${earning.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-11 w-11 p-0"
+                          title="View Breakdown"
+                          aria-label="View earning breakdown"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       {earning.paystub_id ? (
                         <Link href={`/paystubs/${earning.paystub_id}`}>
                           <Button
