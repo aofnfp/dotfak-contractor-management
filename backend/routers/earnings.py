@@ -318,6 +318,8 @@ async def get_earning(
 
             if assignment_result.data:
                 a = assignment_result.data[0]
+                earning['contractor_id'] = a['contractor_id']
+                earning['client_company_id'] = a['client_company_id']
 
                 # Get contractor info
                 contractor_result = supabase_admin_client.table("contractors").select(
