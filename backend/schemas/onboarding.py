@@ -41,14 +41,13 @@ class InvitationResponse(BaseModel):
 
 class OnboardingStatusItem(BaseModel):
     """Schema for contractor onboarding status in admin list."""
-    id: UUID
+    contractor_id: UUID
+    contractor_name: str
     contractor_code: str
-    first_name: str
-    last_name: str
     email: Optional[str] = None
     onboarding_status: str
     has_active_assignment: bool
-    invitation_status: Optional[str] = None
+    has_auth_account: bool
     contract_status: Optional[str] = None
 
 

@@ -167,7 +167,7 @@ class OnboardingService:
         """Get onboarding status for all contractors (admin view)."""
         # Get all contractors
         contractors = supabase_admin_client.table("contractors").select(
-            "id, contractor_code, first_name, last_name, email, onboarding_status"
+            "id, contractor_code, first_name, last_name, email, onboarding_status, auth_user_id"
         ).execute()
 
         result = []
@@ -177,25 +177,19 @@ class OnboardingService:
                 "id"
             ).eq("contractor_id", c["id"]).eq("is_active", True).execute()
 
-            # Get latest invitation status
-            invitations = supabase_admin_client.table("contractor_invitations").select(
-                "status"
-            ).eq("contractor_id", c["id"]).order("created_at", desc=True).limit(1).execute()
-
             # Get latest contract status
             contracts = supabase_admin_client.table("contracts").select(
                 "status"
             ).eq("contractor_id", c["id"]).order("created_at", desc=True).limit(1).execute()
 
             result.append({
-                "id": c["id"],
+                "contractor_id": c["id"],
+                "contractor_name": f"{c['first_name']} {c['last_name']}",
                 "contractor_code": c["contractor_code"],
-                "first_name": c["first_name"],
-                "last_name": c["last_name"],
                 "email": c.get("email"),
                 "onboarding_status": c.get("onboarding_status", "not_invited"),
                 "has_active_assignment": len(assignments.data or []) > 0,
-                "invitation_status": invitations.data[0]["status"] if invitations.data else None,
+                "has_auth_account": c.get("auth_user_id") is not None,
                 "contract_status": contracts.data[0]["status"] if contracts.data else None,
             })
 
