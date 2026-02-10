@@ -362,7 +362,8 @@ class BankAccountService:
             else:
                 payment_status = 'unpaid'
 
-            pending = max(expected - contractor_deposit, Decimal('0'))
+            # Negative pending = overpaid (amount to deduct next period)
+            pending = expected - contractor_deposit
 
             # Update the earnings record
             supabase_admin_client.table("contractor_earnings").update({
