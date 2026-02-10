@@ -115,6 +115,19 @@ async def root():
     }
 
 
+@app.get("/debug/email-config")
+async def debug_email_config():
+    """Debug endpoint to check if email service is configured."""
+    from backend.services.email_service import email_service
+    return {
+        "is_configured": email_service.is_configured,
+        "has_client_id": bool(email_service.client_id),
+        "has_client_secret": bool(email_service.client_secret),
+        "has_tenant_id": bool(email_service.tenant_id),
+        "sender_email": email_service.sender_email or "(not set)",
+    }
+
+
 @app.get("/debug/parser-version")
 async def debug_parser_version():
     """Debug endpoint to check which parser version is loaded."""
