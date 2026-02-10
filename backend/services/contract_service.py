@@ -119,7 +119,7 @@ class ContractService:
         # Check for existing active contract for this assignment
         existing = supabase_admin_client.table("contracts").select("id, version").eq(
             "assignment_id", assignment_id
-        ).eq("contract_type", "original").not_.is_("status", "voided").order(
+        ).eq("contract_type", "original").neq("status", "voided").order(
             "version", desc=True
         ).limit(1).execute()
 
