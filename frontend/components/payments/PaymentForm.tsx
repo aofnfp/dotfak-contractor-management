@@ -95,10 +95,10 @@ export function PaymentForm() {
   useEffect(() => {
     if (isManualMode && manualInfo.contractorId) {
       setSelectedContractorId(manualInfo.contractorId)
-      setValue('contractor_id', manualInfo.contractorId)
+      setValue('contractor_id', manualInfo.contractorId, { shouldValidate: true })
       setPaymentAmount(manualInfo.totalPending)
       setDebouncedAmount(manualInfo.totalPending)
-      setValue('amount', manualInfo.totalPending)
+      setValue('amount', manualInfo.totalPending, { shouldValidate: true })
     }
   }, [isManualMode, manualInfo.contractorId, manualInfo.totalPending, setValue])
 
@@ -213,23 +213,16 @@ export function PaymentForm() {
             {/* Amount */}
             <div className="space-y-2">
               <Label htmlFor="amount">Amount *</Label>
-              {isManualMode ? (
-                <Input
-                  value={formatCurrency(manualInfo.totalPending)}
-                  disabled
-                  className="bg-secondary/30 font-mono font-bold"
-                />
-              ) : (
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  onChange={handleAmountChange}
-                  disabled={createPayment.isPending}
-                />
-              )}
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={paymentAmount || ''}
+                onChange={handleAmountChange}
+                disabled={createPayment.isPending}
+              />
               {errors.amount && (
                 <p className="text-sm text-destructive" role="alert" aria-live="polite">{errors.amount.message}</p>
               )}
@@ -522,7 +515,7 @@ export function PaymentForm() {
               Recording...
             </>
           ) : (
-            `Record Payment${isManualMode ? ` (${formatCurrency(manualInfo.totalPending)})` : ''}`
+            `Record Payment${isManualMode ? ` (${formatCurrency(paymentAmount)})` : ''}`
           )}
         </Button>
       </div>
