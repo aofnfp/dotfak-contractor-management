@@ -520,7 +520,7 @@ class APAccountServicesParser:
             return 0.0
 
 
-def parse(text: str, source_file: str = None) -> List[Dict[str, Any]]:
+def parse(text: str, source_file: str = None, **kwargs) -> List[Dict[str, Any]]:
     """
     Parse AP Account Services paystub text.
 

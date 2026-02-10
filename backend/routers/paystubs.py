@@ -122,7 +122,7 @@ async def upload_paystub_with_earnings(
 
         # Parse with organization-specific parser
         parser_module = get_parser(organization)
-        paystubs = parser_module.parse(text, file.filename)
+        paystubs = parser_module.parse(text, file.filename, pdf_path=str(pdf_path))
 
         # Clean up temp file
         pdf_path.unlink()

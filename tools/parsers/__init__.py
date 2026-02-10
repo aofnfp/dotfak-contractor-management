@@ -10,6 +10,8 @@ from pathlib import Path
 # Available parsers
 AVAILABLE_PARSERS = {
     "ap_account_services": "ap_account_services_parser",
+    "bc_forward": "adp_parser",
+    "iqor": "adp_parser",
 }
 
 
