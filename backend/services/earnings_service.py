@@ -48,6 +48,18 @@ class EarningsCalculator:
         'personal time'
     ]
 
+    # Supplemental earning types that duplicate hours from base lines.
+    # Their dollar amounts count, but their hours must NOT be summed
+    # (e.g., "Overtime Premium" reuses Overtime hours, "Education Differential"
+    # reuses all hours as a per-hour bonus).
+    SUPPLEMENTAL_HOUR_KEYWORDS = [
+        'premium',
+        'differential',
+        'group term life',
+        'gtl',
+        'gross up',
+    ]
+
     @staticmethod
     def identify_bonuses(earnings_list: List[Dict]) -> tuple[List[Dict], List[Dict]]:
         """
@@ -104,7 +116,13 @@ class EarningsCalculator:
             # Calculate totals
             bonus_total = sum(Decimal(str(b.get('amount', 0))) for b in bonuses)
             regular_total = sum(Decimal(str(r.get('amount', 0))) for r in regular_earnings)
-            total_hours = sum(Decimal(str(e.get('hours', 0))) for e in regular_earnings)
+            # Only count hours from base earning lines — exclude supplemental lines
+            # (Premium, Differential, etc.) that duplicate hours from base lines
+            total_hours = sum(
+                Decimal(str(e.get('hours', 0))) for e in regular_earnings
+                if not any(kw in e.get('description', '').lower()
+                           for kw in EarningsCalculator.SUPPLEMENTAL_HOUR_KEYWORDS)
+            )
 
             logger.info(f"Paystub breakdown - Regular: ${regular_total}, Bonuses: ${bonus_total}, Hours: {total_hours}")
 
