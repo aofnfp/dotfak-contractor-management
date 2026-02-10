@@ -58,6 +58,7 @@ export interface EarningsBreakdown {
 
 export interface EarningWithDetails extends Earning {
   contractor_id: string
+  client_company_id: string
   contractor_name: string
   contractor_code: string
   client_name: string

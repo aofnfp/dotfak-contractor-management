@@ -5,31 +5,55 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useUnpaidEarnings } from '@/lib/hooks/useEarnings'
+import { useContractors } from '@/lib/hooks/useContractors'
+import { useClients } from '@/lib/hooks/useClients'
 import { formatCurrency } from '@/lib/utils'
 import { AlertCircle, DollarSign, Users, CheckCircle2, X } from 'lucide-react'
 
 export default function UnpaidEarningsPage() {
   const router = useRouter()
   const { data: earnings, isLoading, error } = useUnpaidEarnings()
+  const { data: contractors } = useContractors()
+  const { data: clients } = useClients()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [contractorFilter, setContractorFilter] = useState<string>('all')
+  const [clientFilter, setClientFilter] = useState<string>('all')
 
-  // Calculate stats from unpaid earnings
-  const stats = earnings
+  // Filter earnings by contractor and client
+  const filteredEarnings = useMemo(() => {
+    if (!earnings) return undefined
+    return earnings.filter(e => {
+      if (contractorFilter !== 'all' && e.contractor_id !== contractorFilter) return false
+      if (clientFilter !== 'all' && e.client_company_id !== clientFilter) return false
+      return true
+    })
+  }, [earnings, contractorFilter, clientFilter])
+
+  // Calculate stats from filtered earnings
+  const stats = filteredEarnings
     ? {
-        totalPending: earnings.reduce((sum, e) => sum + e.amount_pending, 0),
-        totalContractors: new Set(earnings.map((e) => e.contractor_assignment_id)).size,
-        count: earnings.length,
+        totalPending: filteredEarnings.reduce((sum, e) => sum + e.amount_pending, 0),
+        totalContractors: new Set(filteredEarnings.map((e) => e.contractor_assignment_id)).size,
+        count: filteredEarnings.length,
       }
     : { totalPending: 0, totalContractors: 0, count: 0 }
 
   // Compute selection-derived state
   const selectionInfo = useMemo(() => {
-    if (!earnings || selectedIds.size === 0) {
+    if (!filteredEarnings || selectedIds.size === 0) {
       return { selectedEarnings: [], selectedPending: 0, uniqueContractors: new Set<string>(), isMixed: false }
     }
-    const selectedEarnings = earnings.filter(e => selectedIds.has(e.id))
+    const selectedEarnings = filteredEarnings.filter(e => selectedIds.has(e.id))
     const selectedPending = selectedEarnings.reduce((sum, e) => sum + e.amount_pending, 0)
     const uniqueContractors = new Set(selectedEarnings.map(e => e.contractor_id))
     return {
@@ -38,7 +62,7 @@ export default function UnpaidEarningsPage() {
       uniqueContractors,
       isMixed: uniqueContractors.size > 1,
     }
-  }, [earnings, selectedIds])
+  }, [filteredEarnings, selectedIds])
 
   const handlePaySelected = () => {
     const ids = Array.from(selectedIds).join(',')
@@ -124,6 +148,48 @@ export default function UnpaidEarningsPage() {
         </div>
       )}
 
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Contractor</Label>
+              <Select value={contractorFilter} onValueChange={(v) => { setContractorFilter(v); setSelectedIds(new Set()) }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All contractors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Contractors</SelectItem>
+                  {contractors?.map((contractor) => (
+                    <SelectItem key={contractor.id} value={contractor.id}>
+                      {contractor.contractor_code} - {contractor.first_name}{' '}
+                      {contractor.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Client Company</Label>
+              <Select value={clientFilter} onValueChange={(v) => { setClientFilter(v); setSelectedIds(new Set()) }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All clients" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.code} - {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Box */}
       <Card className="border-muted bg-secondary/20">
         <CardContent className="pt-6">
@@ -152,10 +218,10 @@ export default function UnpaidEarningsPage() {
             <p className="text-destructive">Error loading unpaid earnings</p>
           </CardContent>
         </Card>
-      ) : earnings && earnings.length > 0 ? (
+      ) : filteredEarnings && filteredEarnings.length > 0 ? (
         <div className={selectedIds.size > 0 ? 'pb-20' : ''}>
           <EarningsTable
-            earnings={earnings}
+            earnings={filteredEarnings}
             selectable
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
