@@ -27,6 +27,17 @@ from backend.schemas import (
 
 logger = logging.getLogger(__name__)
 
+# Earning descriptions that duplicate hours from base lines (Premium, Differential, etc.)
+# These are supplemental pay rates applied to the same hours, not additional hours worked.
+_SUPPLEMENTAL_KEYWORDS = ('premium', 'differential', 'group term life', 'gtl', 'gross up')
+
+
+def _is_supplemental_earning(description: str) -> bool:
+    """Check if an earning line is a supplemental pay type that duplicates hours."""
+    desc_lower = description.lower()
+    return any(kw in desc_lower for kw in _SUPPLEMENTAL_KEYWORDS)
+
+
 router = APIRouter(prefix="/paystubs", tags=["paystubs"])
 
 
@@ -436,9 +447,13 @@ async def list_paystubs(
             enriched = dict(paystub)
 
             # Compute total hours from earnings in paystub_data
+            # Exclude supplemental lines that duplicate hours (Premium, Differential, GTL, Gross Up)
             paystub_data = paystub.get('paystub_data') or {}
             earnings_list = paystub_data.get('earnings', [])
-            total_hours = sum(float(e.get('hours') or 0) for e in earnings_list)
+            total_hours = sum(
+                float(e.get('hours') or 0) for e in earnings_list
+                if not _is_supplemental_earning(e.get('description', ''))
+            )
             enriched['total_hours'] = total_hours if total_hours > 0 else None
 
             # Add account split amounts (contractor vs admin)
@@ -514,9 +529,13 @@ async def get_paystub(
         paystub = paystub_result.data[0]
 
         # Compute total hours from earnings in paystub_data
+        # Exclude supplemental lines that duplicate hours (Premium, Differential, GTL, Gross Up)
         paystub_data = paystub.get('paystub_data') or {}
         earnings_list = paystub_data.get('earnings', [])
-        total_hours = sum(float(e.get('hours') or 0) for e in earnings_list)
+        total_hours = sum(
+            float(e.get('hours') or 0) for e in earnings_list
+            if not _is_supplemental_earning(e.get('description', ''))
+        )
         paystub['total_hours'] = total_hours if total_hours > 0 else None
 
         # Get associated earnings if they exist
