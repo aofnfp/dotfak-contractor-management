@@ -9,6 +9,18 @@ export function cn(...inputs: ClassValue[]) {
  * Format a date string to a human-readable format
  */
 export function formatDate(dateString: string): string {
+  // Parse YYYY-MM-DD manually to avoid UTC timezone shift
+  // (new Date("2026-01-12") treats it as UTC midnight, which shifts back 1 day in US timezones)
+  const [year, month, day] = dateString.split('-').map(Number)
+  if (year && month && day) {
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+  // Fallback for non-YYYY-MM-DD formats (timestamps, etc.)
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
