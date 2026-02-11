@@ -252,7 +252,7 @@ async def get_contractor_dashboard(user: dict = Depends(verify_token)) -> Dict:
 
         # Get active assignment(s) with client info
         assignments_resp = supabase_admin_client.table("contractor_assignments").select(
-            "id, hourly_rate, bonus_percentage, is_active, client_company_id, "
+            "id, fixed_hourly_rate, bonus_split_percentage, is_active, client_company_id, "
             "client_companies(name, code)"
         ).eq("contractor_id", contractor_id).eq("is_active", True).execute()
         assignments = assignments_resp.data or []
@@ -343,8 +343,8 @@ async def get_contractor_dashboard(user: dict = Depends(verify_token)) -> Dict:
             assignment_info.append({
                 "client_name": client.get("name", "Unknown"),
                 "client_code": client.get("code"),
-                "hourly_rate": float(a.get("hourly_rate") or 0),
-                "bonus_percentage": float(a.get("bonus_percentage") or 0),
+                "hourly_rate": float(a.get("fixed_hourly_rate") or 0),
+                "bonus_percentage": float(a.get("bonus_split_percentage") or 0),
             })
 
         payment_rate = (total_paid / total_earnings * 100) if total_earnings > 0 else 0
