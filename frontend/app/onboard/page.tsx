@@ -161,9 +161,9 @@ function OnboardWizard() {
       {step === 'profile' && (
         <VerifyProfileStep
           firstName={tokenData?.first_name || ''}
-          lastName={tokenData.last_name || ''}
-          phone={tokenData.phone}
-          address={tokenData.address}
+          lastName={tokenData?.last_name || ''}
+          phone={tokenData?.phone}
+          address={tokenData?.address}
           onComplete={(cId) => {
             setContractId(cId)
             setStep('contract')
