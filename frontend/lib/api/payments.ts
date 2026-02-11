@@ -68,3 +68,44 @@ export const paymentsApi = {
     await apiClient.delete(`/payments/${id}`)
   },
 }
+
+// ── Manager Payments ────────────────────────────────────────
+
+export interface ManagerPayment {
+  id: string
+  manager_id: string
+  manager_name?: string
+  amount: number
+  payment_method: string | null
+  payment_date: string
+  transaction_reference: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface CreateManagerPaymentRequest {
+  manager_id: string
+  amount: number
+  payment_method?: string
+  payment_date: string
+  transaction_reference?: string
+  notes?: string
+}
+
+export const managerPaymentsApi = {
+  list: async (managerId?: string): Promise<ManagerPayment[]> => {
+    const response = await apiClient.get('/payments/manager/list', {
+      params: managerId ? { manager_id: managerId } : undefined,
+    })
+    return response.data
+  },
+
+  create: async (data: CreateManagerPaymentRequest): Promise<ManagerPayment> => {
+    const response = await apiClient.post('/payments/manager', data)
+    return response.data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/payments/manager/${id}`)
+  },
+}

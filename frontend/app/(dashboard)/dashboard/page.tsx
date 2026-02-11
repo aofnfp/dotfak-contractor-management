@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { useDashboardStats, useContractorDashboardStats } from '@/lib/hooks/useDashboard'
+import { useDashboardStats, useContractorDashboardStats, useManagerDashboardStats } from '@/lib/hooks/useDashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,7 @@ import {
   Users, DollarSign, FileText, TrendingUp, Clock, Building2,
   AlertCircle, Wallet, PiggyBank, ArrowUpRight,
   ArrowDownRight, Upload, UserPlus, Sparkles, BarChart3,
-  FileSignature, Briefcase, CheckCircle2,
+  FileSignature, Briefcase, CheckCircle2, Phone, Mail, Shield,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { MonthlyTrend, ContractorMonthlyTrend } from '@/lib/api/dashboard'
@@ -387,6 +387,37 @@ function ContractorDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* My Manager */}
+            {stats?.manager && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-heading flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-cta" />
+                    My Manager
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="font-medium">{stats.manager.name}</p>
+                  {stats.manager.email && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5" />
+                      <a href={`mailto:${stats.manager.email}`} className="hover:text-cta transition-colors">
+                        {stats.manager.email}
+                      </a>
+                    </div>
+                  )}
+                  {stats.manager.phone && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      <a href={`tel:${stats.manager.phone}`} className="hover:text-cta transition-colors">
+                        {stats.manager.phone}
+                      </a>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* This Month */}
             <Card>
@@ -789,6 +820,224 @@ function AdminDashboard() {
 }
 
 /* ============================================================
+   MANAGER DASHBOARD
+   ============================================================ */
+function ManagerDashboard() {
+  const { user } = useAuth()
+  const { data: stats, isLoading, error } = useManagerDashboardStats()
+
+  return (
+    <div className="p-6 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-heading text-text">
+              {stats ? `Welcome, ${stats.manager_name}` : 'Dashboard'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {stats?.earliest_period && stats?.latest_period
+                ? `${formatDate(stats.earliest_period)} - ${formatDate(stats.latest_period)}`
+                : `Welcome back, ${user?.email}`
+              }
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/staff">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Users className="h-4 w-4" />
+                My Staff
+              </Button>
+            </Link>
+            <Link href="/earnings">
+              <Button size="sm" className="gap-2 bg-cta hover:bg-cta/90">
+                <BarChart3 className="h-4 w-4" />
+                Earnings
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <Card className="bg-destructive/10 border-destructive">
+            <CardContent className="py-4">
+              <p className="text-destructive text-sm">
+                Failed to load dashboard. Please try refreshing the page.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Earnings"
+            value={stats ? formatCurrency(stats.total_earnings) : '$0'}
+            subtitle={`${stats?.count_paid || 0} paid periods`}
+            icon={Wallet}
+            color="text-cta"
+            loading={isLoading}
+          />
+          <StatCard
+            title="Staff Managed"
+            value={stats ? String(stats.staff_count) : '0'}
+            subtitle="Active contractors"
+            icon={Users}
+            color="text-foreground"
+            loading={isLoading}
+          />
+          <StatCard
+            title="Amount Paid"
+            value={stats ? formatCurrency(stats.total_paid) : '$0'}
+            subtitle={stats ? `${stats.payment_rate.toFixed(0)}% collected` : undefined}
+            icon={CheckCircle2}
+            color="text-cta"
+            loading={isLoading}
+          />
+          <StatCard
+            title="Outstanding"
+            value={stats ? formatCurrency(stats.total_pending) : '$0'}
+            subtitle={stats ? `${stats.count_unpaid} unpaid periods` : undefined}
+            icon={AlertCircle}
+            color={stats && stats.total_pending > 0 ? 'text-destructive' : 'text-cta'}
+            loading={isLoading}
+          />
+        </div>
+
+        {/* Detail Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Staff Hours */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg font-heading">Staff Hours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stats && stats.staff.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left py-2 font-medium">Contractor</th>
+                        <th className="text-left py-2 font-medium">Client</th>
+                        <th className="text-right py-2 font-medium">Total Hours</th>
+                        <th className="py-2 pl-4 font-medium w-32"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.staff.map((s) => (
+                        <tr key={s.contractor_assignment_id} className="border-b border-border/50 hover:bg-secondary/50">
+                          <td className="py-2 font-medium">{s.contractor_name}</td>
+                          <td className="py-2 text-muted-foreground">{s.client_name}</td>
+                          <td className="text-right py-2 font-mono">{s.total_hours.toFixed(1)}</td>
+                          <td className="py-2 pl-4">
+                            <MiniBar
+                              value={s.total_hours}
+                              max={Math.max(...stats.staff.map(st => st.total_hours), 1)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">No staff assigned yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right sidebar */}
+          <div className="space-y-4">
+            {/* This Month */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-heading">This Month</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {stats && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Earnings</span>
+                      <span className="font-mono font-semibold text-cta">
+                        {formatCurrency(stats.this_month_earnings)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Staff Hours</span>
+                      <span className="font-mono">{stats.this_month_hours.toFixed(1)}</span>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Payment Status */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-heading">Payment Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {stats && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm flex items-center gap-1">
+                        <ArrowUpRight className="h-3 w-3 text-cta" /> Paid
+                      </span>
+                      <span className="font-mono text-sm text-cta">{formatCurrency(stats.total_paid)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm flex items-center gap-1">
+                        <ArrowDownRight className="h-3 w-3 text-destructive" /> Pending
+                      </span>
+                      <span className="font-mono text-sm text-destructive">{formatCurrency(stats.total_pending)}</span>
+                    </div>
+                    <div className="pt-2">
+                      <MiniBar value={stats.total_paid} max={stats.total_earnings} color="bg-cta" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {stats.payment_rate.toFixed(1)}% collected
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Devices */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-heading">Devices</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {stats && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total</span>
+                      <span className="font-mono">{stats.devices.total}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Badge className="bg-cta hover:bg-cta/90 text-white">In Use</Badge>
+                      <span className="font-mono text-sm">{stats.devices.in_use}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Badge variant="outline" className="bg-blue-500/20 text-blue-500 border-blue-500/30">Received</Badge>
+                      <span className="font-mono text-sm">{stats.devices.received}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Badge variant="outline" className="bg-amber-500/20 text-amber-500 border-amber-500/30">Delivered</Badge>
+                      <span className="font-mono text-sm">{stats.devices.delivered}</span>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
    MAIN PAGE - Routes by role
    ============================================================ */
 export default function DashboardPage() {
@@ -796,6 +1045,10 @@ export default function DashboardPage() {
 
   if (user?.role === 'contractor') {
     return <ContractorDashboard />
+  }
+
+  if (user?.role === 'manager') {
+    return <ManagerDashboard />
   }
 
   return <AdminDashboard />

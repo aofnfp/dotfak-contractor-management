@@ -121,6 +121,53 @@ export interface ContractorDashboardStats {
 
   // Monthly trend
   monthly_trend: ContractorMonthlyTrend[]
+
+  // Manager
+  manager: {
+    name: string
+    email: string | null
+    phone: string | null
+  } | null
+}
+
+export interface ManagerStaffMember {
+  contractor_assignment_id: string
+  contractor_name: string
+  client_name: string
+  total_hours: number
+}
+
+export interface ManagerDashboardStats {
+  manager_name: string
+
+  // Staff
+  staff_count: number
+  staff: ManagerStaffMember[]
+
+  // Own earnings
+  total_earnings: number
+  total_paid: number
+  total_pending: number
+  total_hours: number
+  payment_rate: number
+  count_paid: number
+  count_unpaid: number
+
+  // This month
+  this_month_earnings: number
+  this_month_hours: number
+
+  // Devices
+  devices: {
+    total: number
+    in_use: number
+    received: number
+    delivered: number
+  }
+
+  // Date range
+  earliest_period: string | null
+  latest_period: string | null
 }
 
 export const dashboardApi = {
@@ -131,6 +178,11 @@ export const dashboardApi = {
 
   getContractorStats: async (): Promise<ContractorDashboardStats> => {
     const response = await apiClient.get('/dashboard/contractor')
+    return response.data
+  },
+
+  getManagerStats: async (): Promise<ManagerDashboardStats> => {
+    const response = await apiClient.get('/dashboard/manager')
     return response.data
   },
 }

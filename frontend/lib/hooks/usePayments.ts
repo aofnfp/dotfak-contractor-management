@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { paymentsApi } from '@/lib/api/payments'
+import { paymentsApi, managerPaymentsApi } from '@/lib/api/payments'
+import type { CreateManagerPaymentRequest } from '@/lib/api/payments'
 import { toast } from 'sonner'
 import type { CreatePaymentRequest } from '@/lib/types/payment'
 
@@ -99,6 +100,47 @@ export function useDeletePayment() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || 'Failed to delete payment')
+    },
+  })
+}
+
+// ── Manager Payments ────────────────────────────────────────
+
+export function useManagerPayments(managerId?: string) {
+  return useQuery({
+    queryKey: ['manager-payments', managerId],
+    queryFn: () => managerPaymentsApi.list(managerId),
+  })
+}
+
+export function useCreateManagerPayment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: CreateManagerPaymentRequest) => managerPaymentsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manager-payments'] })
+      queryClient.invalidateQueries({ queryKey: ['manager-earnings'] })
+      toast.success('Manager payment recorded successfully!')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to record manager payment')
+    },
+  })
+}
+
+export function useDeleteManagerPayment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => managerPaymentsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manager-payments'] })
+      queryClient.invalidateQueries({ queryKey: ['manager-earnings'] })
+      toast.success('Manager payment deleted successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete manager payment')
     },
   })
 }

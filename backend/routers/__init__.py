@@ -12,6 +12,11 @@ from backend.routers.earnings import router as earnings_router
 from backend.routers.dashboard import router as dashboard_router
 from backend.routers.onboarding import router as onboarding_router
 from backend.routers.contracts import router as contracts_router
+from backend.routers.managers import router as managers_router
+from backend.routers.manager_assignments import router as manager_assignments_router
+from backend.routers.manager_earnings import router as manager_earnings_router
+from backend.routers.manager_onboarding import router as manager_onboarding_router
+from backend.routers.devices import router as devices_router
 
 __all__ = [
     "auth_router",
@@ -24,4 +29,9 @@ __all__ = [
     "dashboard_router",
     "onboarding_router",
     "contracts_router",
+    "managers_router",
+    "manager_assignments_router",
+    "manager_earnings_router",
+    "manager_onboarding_router",
+    "devices_router",
 ]

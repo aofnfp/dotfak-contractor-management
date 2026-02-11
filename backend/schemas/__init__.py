@@ -45,6 +45,22 @@ from backend.schemas.contract import (
     GenerateAmendmentRequest,
 )
 
+from backend.schemas.manager import (
+    ManagerBase,
+    ManagerCreate,
+    ManagerUpdate,
+    ManagerResponse,
+    ManagerListItem,
+    ManagerAssignmentCreate,
+    ManagerAssignmentUpdate,
+    ManagerAssignmentResponse,
+    ManagerEarningsResponse,
+    ManagerEarningsSummary,
+    DeviceCreate,
+    DeviceUpdate,
+    DeviceResponse,
+)
+
 from backend.schemas.bank_account import (
     BankAccountBase,
     BankAccountCreate,
@@ -106,4 +122,17 @@ __all__ = [
     "SignContractRequest",
     "SignatureResponse",
     "GenerateAmendmentRequest",
+    "ManagerBase",
+    "ManagerCreate",
+    "ManagerUpdate",
+    "ManagerResponse",
+    "ManagerListItem",
+    "ManagerAssignmentCreate",
+    "ManagerAssignmentUpdate",
+    "ManagerAssignmentResponse",
+    "ManagerEarningsResponse",
+    "ManagerEarningsSummary",
+    "DeviceCreate",
+    "DeviceUpdate",
+    "DeviceResponse",
 ]

@@ -19,6 +19,7 @@ from parsers import get_parser, AVAILABLE_PARSERS
 from backend.config import supabase_admin_client
 from backend.dependencies import require_admin
 from backend.services import PaystubService, calculate_contractor_earnings, BankAccountService
+from backend.services.manager_earnings_service import calculate_manager_earnings
 from backend.schemas import (
     CheckAccountsResponse,
     AccountAssignmentRequest,
@@ -260,6 +261,18 @@ async def upload_paystub_with_earnings(
                         }
 
                         logger.info(f"✅ Paystub {idx} processed - Contractor earnings: ${saved_earnings['contractor_total_earnings']}")
+
+                        # Auto-calculate manager earnings if a manager oversees this assignment
+                        try:
+                            mgr_earnings = calculate_manager_earnings(saved_paystub['id'])
+                            if mgr_earnings:
+                                paystub_with_details["manager_earnings"] = [
+                                    {"manager_id": me["manager_id"], "total": me["total_earnings"]}
+                                    for me in mgr_earnings
+                                ]
+                                logger.info(f"✅ Manager earnings calculated for paystub {saved_paystub['id']}: {len(mgr_earnings)} manager(s)")
+                        except Exception as mgr_err:
+                            logger.error(f"Manager earnings calculation failed for paystub {saved_paystub['id']}: {str(mgr_err)}")
 
                     except Exception as e:
                         logger.error(f"❌ Paystub {idx} earnings calculation failed: {str(e)}")

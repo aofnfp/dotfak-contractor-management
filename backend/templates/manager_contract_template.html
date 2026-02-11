@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: letter; margin: 1in; }
+  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-height: 1.6; color: #222; }
+  h1 { text-align: center; font-size: 18pt; margin-bottom: 4px; color: #1a1a2e; }
+  h2 { font-size: 13pt; margin-top: 24px; margin-bottom: 8px; color: #1a1a2e; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header .subtitle { font-size: 11pt; color: #555; margin-top: 0; }
+  .parties { margin: 20px 0; }
+  .parties p { margin: 4px 0; }
+  .section { margin-bottom: 16px; }
+  .section p { margin: 6px 0; text-align: justify; }
+  .indent { margin-left: 24px; }
+  .signature-block { margin-top: 50px; page-break-inside: avoid; }
+  .sig-row { display: flex; justify-content: space-between; margin-top: 40px; }
+  .sig-party { width: 45%; }
+  .sig-party .sig-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 4px; }
+  .sig-party .sig-placeholder { min-height: 60px; }
+  .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #999; }
+  ul { margin: 6px 0; padding-left: 24px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>MANAGEMENT SERVICES AGREEMENT</h1>
+  <p class="subtitle">Dotfak Group LLC</p>
+</div>
+
+<p style="text-align: center; font-size: 11pt; color: #555;">
+  Effective Date: {{ contract_date }}
+</p>
+
+<!-- SECTION 1: PARTIES -->
+<h2>1. Parties</h2>
+<div class="section">
+  <p>This Management Services Agreement ("Agreement") is entered into as of <strong>{{ contract_date }}</strong> by and between:</p>
+  <div class="indent">
+    <p><strong>{{ company_name }}</strong>, a limited liability company organized under the laws of the State of Texas, United States of America, with its principal place of business in {{ company_address }} (hereinafter referred to as the "Company"),</p>
+    <p>and</p>
+    <p><strong>{{ manager_name }}</strong>, an individual residing at {{ manager_address }} (hereinafter referred to as the "Manager").</p>
+  </div>
+  <p>The Company and the Manager are individually referred to as a "Party" and collectively as the "Parties."</p>
+</div>
+
+<!-- SECTION 2: ENGAGEMENT & SERVICES -->
+<h2>2. Engagement and Services</h2>
+<div class="section">
+  <p>The Company hereby engages the Manager to provide oversight and management services for the Company's contractor, <strong>{{ contractor_name }}</strong>, assigned to <strong>{{ client_company_name }}</strong> (the "Client"). The Manager shall:</p>
+  <ul>
+    <li>Oversee and support the managed contractor's day-to-day operations;</li>
+    <li>Manage device logistics including delivery, tracking, and credential management;</li>
+    <li>Coordinate with the Company on contractor performance and operational matters;</li>
+    <li>Act as the primary point of contact between the Company and the managed contractor.</li>
+  </ul>
+</div>
+
+<!-- SECTION 3: TERM -->
+<h2>3. Term</h2>
+<div class="section">
+  <p>This Agreement shall be effective as of <strong>{{ start_date }}</strong> and shall continue on an at-will basis until terminated by either Party in accordance with Section 12 of this Agreement.</p>
+</div>
+
+<!-- SECTION 4: COMPENSATION -->
+<h2>4. Compensation</h2>
+<div class="section">
+  <p>The Manager shall be compensated at a flat rate of <strong>${{ "%.2f"|format(flat_hourly_rate) }} USD per hour</strong> for all hours worked by the managed contractor as reported on the Client's payroll records.</p>
+  <p>Manager compensation is calculated as: <strong>Total Staff Hours Worked x Flat Hourly Rate</strong>. No overtime multipliers, bonuses, or additional premiums shall apply to the Manager's compensation regardless of the nature of the staff contractor's hours (including overtime, holiday, or other premium hours).</p>
+  <p><strong>Compensation under this Agreement is fixed and non-negotiable for the duration of this Agreement.</strong></p>
+</div>
+
+<!-- SECTION 5: PAYMENT TERMS -->
+<h2>5. Payment Terms</h2>
+<div class="section">
+  <p>Payments to the Manager shall be processed via direct bank deposit within five (5) business days following the Company's receipt of corresponding payment from the Client. The Manager acknowledges that the Company's payment obligations are contingent upon the Company's receipt of funds from the Client.</p>
+  <p>The Manager is responsible for providing accurate and current banking information to the Company for payment processing.</p>
+</div>
+
+<!-- SECTION 6: EQUIPMENT & DEVICE MANAGEMENT -->
+<h2>6. Equipment and Device Management</h2>
+<div class="section">
+  <p>The Manager shall be responsible for managing all equipment and devices assigned to the managed contractor, including but not limited to:</p>
+  <ul>
+    <li>Receiving equipment from the Company and ensuring proper delivery to the managed contractor;</li>
+    <li>Maintaining accurate records of device serial numbers, credentials, and status;</li>
+    <li>Ensuring timely return of all equipment upon contractor termination or reassignment;</li>
+    <li>Reporting any loss, damage, or security concerns regarding equipment to the Company within twenty-four (24) hours.</li>
+  </ul>
+  <p>The Manager shall bear responsibility for any equipment lost or damaged while under their custody or the custody of the managed contractor.</p>
+</div>
+
+<!-- SECTION 7: CONFIDENTIALITY -->
+<h2>7. Confidentiality and Non-Disclosure</h2>
+<div class="section">
+  <p>The Manager acknowledges that during the course of this engagement, they may have access to confidential and proprietary information belonging to the Company, the Client, or the managed contractor. The Manager agrees to:</p>
+  <ul>
+    <li>Not disclose any Confidential Information to unauthorized parties;</li>
+    <li>Use Confidential Information solely for the purpose of performing management services;</li>
+    <li>Not disclose the managed contractor's compensation, earnings, or financial details to any third party;</li>
+    <li>Return or destroy all Confidential Information upon termination.</li>
+  </ul>
+  <p>This confidentiality obligation shall survive the termination of this Agreement for a period of <strong>two (2) years</strong>.</p>
+</div>
+
+<!-- SECTION 8: DATA PRIVACY -->
+<h2>8. Data Privacy and Security</h2>
+<div class="section">
+  <p>The Manager shall handle all data, including device credentials and contractor information, in accordance with applicable privacy and data protection laws. The Manager agrees to store credentials securely and report any data breach within twenty-four (24) hours of discovery.</p>
+</div>
+
+<!-- SECTION 9: INDEPENDENT CONTRACTOR STATUS -->
+<h2>9. Independent Contractor Status</h2>
+<div class="section">
+  <p>The Manager is an independent contractor and not an employee, agent, partner, or joint venturer of the Company. The Manager shall be solely responsible for all tax obligations in their jurisdiction of residence.</p>
+</div>
+
+<!-- SECTION 10: NON-SOLICITATION -->
+<h2>10. Non-Solicitation</h2>
+<div class="section">
+  <p>During the term of this Agreement and for a period of <strong>twelve (12) months</strong> following its termination, the Manager shall not directly or indirectly solicit, recruit, or attempt to hire any contractor or employee engaged by the Company, or divert business from any client of the Company.</p>
+</div>
+
+<!-- SECTION 11: LIABILITY -->
+<h2>11. Liability and Indemnification</h2>
+<div class="section">
+  <p>The Manager shall indemnify and hold harmless the Company from any claims, damages, or losses arising from the Manager's breach of this Agreement, negligence, or willful misconduct.</p>
+</div>
+
+<!-- SECTION 12: TERMINATION -->
+<h2>12. Termination</h2>
+<div class="section">
+  <p>Either Party may terminate this Agreement by providing <strong>thirty (30) days</strong> written notice. The Company may terminate immediately for cause, including material breach, misconduct, or failure to fulfill management responsibilities.</p>
+  <p>Upon termination, the Manager shall ensure all managed equipment is accounted for and returned, and all Confidential Information is returned or destroyed.</p>
+</div>
+
+<!-- SECTION 13: DISPUTE RESOLUTION -->
+<h2>13. Dispute Resolution</h2>
+<div class="section">
+  <p>This Agreement shall be governed by {{ jurisdiction_law }}. Disputes shall be resolved through {{ jurisdiction_venue }}.</p>
+</div>
+
+<!-- SECTION 14: GENERAL PROVISIONS -->
+<h2>14. General Provisions</h2>
+<div class="section">
+  <p><strong>Amendments.</strong> This Agreement may only be amended by a written instrument signed by both Parties.</p>
+  <p><strong>Severability.</strong> If any provision is found invalid, the remaining provisions continue in full force.</p>
+  <p><strong>Entire Agreement.</strong> This Agreement constitutes the entire agreement between the Parties.</p>
+</div>
+
+<!-- SECTION 15: SIGNATURES -->
+<h2>15. Signatures</h2>
+<div class="signature-block">
+  <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.</p>
+
+  <div class="sig-row">
+    <div class="sig-party">
+      <p><strong>FOR THE COMPANY:</strong></p>
+      <p>{{ company_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_ADMIN -->
+      </div>
+      <div class="sig-line">
+        <p>{{ company_representative }}, {{ company_title }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+
+    <div class="sig-party">
+      <p><strong>FOR THE MANAGER:</strong></p>
+      <p>{{ manager_name }}</p>
+      <div class="sig-placeholder">
+        <!-- SIGNATURE_CONTRACTOR -->
+      </div>
+      <div class="sig-line">
+        <p>{{ manager_name }}</p>
+        <p>Date: _________________</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>{{ company_name }} &bull; {{ company_address }} &bull; {{ contract_year }}</p>
+</div>
+
+</body>
+</html>

@@ -148,6 +148,95 @@ class ContractService:
         return result.data[0]
 
     @staticmethod
+    def generate_manager_contract(manager_id: str, manager_assignment_id: str) -> dict:
+        """
+        Generate a contract for a manager assignment.
+
+        Uses a separate template with manager-specific terms (flat rate, device management).
+        Returns the created contract record.
+        """
+        # Fetch manager
+        manager_result = supabase_admin_client.table("managers").select("*").eq(
+            "id", manager_id
+        ).execute()
+        if not manager_result.data:
+            raise Exception("Manager not found")
+        manager = manager_result.data[0]
+
+        # Fetch manager assignment
+        ma_result = supabase_admin_client.table("manager_assignments").select("*").eq(
+            "id", manager_assignment_id
+        ).execute()
+        if not ma_result.data:
+            raise Exception("Manager assignment not found")
+        ma = ma_result.data[0]
+
+        # Fetch contractor assignment for contractor + client info
+        ca_result = supabase_admin_client.table("contractor_assignments").select(
+            "*, contractors(first_name, last_name), client_companies(name)"
+        ).eq("id", ma["contractor_assignment_id"]).execute()
+        if not ca_result.data:
+            raise Exception("Contractor assignment not found")
+        ca = ca_result.data[0]
+
+        contractor_info = ca.get("contractors", {}) or {}
+        client_info = ca.get("client_companies", {}) or {}
+
+        # Build template data
+        contract_data = {
+            "company_name": "Dotfak Group LLC",
+            "company_address": "Texas, United States of America",
+            "company_representative": "Abraham Oladotun",
+            "company_title": "Managing Director",
+            "manager_name": f"{manager['first_name']} {manager['last_name']}",
+            "manager_address": manager.get("address") or "Address on file",
+            "contractor_name": f"{contractor_info.get('first_name', '')} {contractor_info.get('last_name', '')}",
+            "client_company_name": client_info.get("name", "Client Company"),
+            "flat_hourly_rate": float(ma["flat_hourly_rate"]),
+            "start_date": str(ma.get("start_date", "")),
+            "jurisdiction_law": "the laws of the Federal Republic of Nigeria",
+            "jurisdiction_venue": "arbitration in Lagos, Nigeria, in accordance with the Arbitration and Conciliation Act",
+            "contract_date": datetime.utcnow().strftime("%B %d, %Y"),
+            "contract_year": datetime.utcnow().strftime("%Y"),
+        }
+
+        # Render HTML
+        env = ContractService._get_template_env()
+        template = env.get_template("manager_contract_template.html")
+        html_content = template.render(**contract_data)
+
+        # Check for existing contract for this manager assignment
+        existing = supabase_admin_client.table("contracts").select("id, version").eq(
+            "manager_id", manager_id
+        ).eq("assignment_id", ma["contractor_assignment_id"]).neq(
+            "status", "voided"
+        ).order("version", desc=True).limit(1).execute()
+
+        version = 1
+        if existing.data:
+            supabase_admin_client.table("contracts").update({
+                "status": "superseded"
+            }).eq("id", existing.data[0]["id"]).execute()
+            version = existing.data[0]["version"] + 1
+
+        # Create contract record
+        result = supabase_admin_client.table("contracts").insert({
+            "manager_id": manager_id,
+            "contractor_id": None,
+            "assignment_id": ma["contractor_assignment_id"],
+            "contract_type": "original",
+            "version": version,
+            "status": "pending_contractor",
+            "html_content": html_content,
+            "contract_data": contract_data,
+        }).execute()
+
+        if not result.data:
+            raise Exception("Failed to create manager contract")
+
+        return result.data[0]
+
+    @staticmethod
     def generate_amendment(parent_contract_id: str, assignment_id: str, changes: dict) -> dict:
         """
         Generate an amendment referencing the original contract.

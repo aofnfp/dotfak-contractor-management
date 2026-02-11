@@ -10,7 +10,7 @@ export interface NavItem {
   icon: LucideIcon
   badge?: string
   description?: string
-  roles?: ('admin' | 'contractor')[]
+  roles?: ('admin' | 'contractor' | 'manager')[]
 }
 
 export interface NavSection {

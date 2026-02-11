@@ -7,6 +7,8 @@ import {
   CreditCard,
   UserCheck,
   FileSignature,
+  Shield,
+  Monitor,
 } from 'lucide-react'
 import type { NavSection } from '@/lib/types/navigation'
 
@@ -52,6 +54,27 @@ export const navigationConfig: NavSection[] = [
         icon: FileText,
         description: 'Upload and view paystubs',
         roles: ['admin'],
+      },
+      {
+        title: 'Managers',
+        href: '/managers',
+        icon: Shield,
+        description: 'Manage staff managers',
+        roles: ['admin'],
+      },
+      {
+        title: 'Devices',
+        href: '/devices',
+        icon: Monitor,
+        description: 'Track equipment and devices',
+        roles: ['admin', 'manager'],
+      },
+      {
+        title: 'My Staff',
+        href: '/staff',
+        icon: Users,
+        description: 'View managed contractors',
+        roles: ['manager'],
       },
     ],
   },

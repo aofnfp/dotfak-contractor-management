@@ -38,7 +38,7 @@ export function Sidebar() {
         <div className="space-y-6">
           {navigationConfig.map((section) => {
             const visibleItems = section.items.filter(
-              (item) => !item.roles || item.roles.includes(user?.role as 'admin' | 'contractor')
+              (item) => !item.roles || item.roles.includes(user?.role as 'admin' | 'contractor' | 'manager')
             )
             if (visibleItems.length === 0) return null
 

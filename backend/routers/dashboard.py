@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import logging
 
 from backend.config import supabase_admin_client
-from backend.dependencies import require_admin, verify_token, get_contractor_id
+from backend.dependencies import require_admin, verify_token, get_contractor_id, get_manager_id
 
 logger = logging.getLogger(__name__)
 
@@ -257,8 +257,22 @@ async def get_contractor_dashboard(user: dict = Depends(verify_token)) -> Dict:
         ).eq("contractor_id", contractor_id).eq("is_active", True).execute()
         assignments = assignments_resp.data or []
 
-        # Get all earnings for this contractor
+        # Look up manager for this contractor's assignments
+        manager_info = None
         assignment_ids = [a["id"] for a in assignments]
+        if assignment_ids:
+            ma_resp = supabase_admin_client.table("manager_assignments").select(
+                "manager_id, managers(first_name, last_name, email, phone)"
+            ).in_("contractor_assignment_id", assignment_ids).eq("is_active", True).limit(1).execute()
+            if ma_resp.data:
+                mgr = ma_resp.data[0].get("managers") or {}
+                manager_info = {
+                    "name": f"{mgr.get('first_name', '')} {mgr.get('last_name', '')}".strip(),
+                    "email": mgr.get("email"),
+                    "phone": mgr.get("phone"),
+                }
+
+        # Get all earnings for this contractor
         earnings = []
         if assignment_ids:
             earnings_resp = supabase_admin_client.table("contractor_earnings").select(
@@ -388,6 +402,9 @@ async def get_contractor_dashboard(user: dict = Depends(verify_token)) -> Dict:
 
             # Monthly trend
             "monthly_trend": monthly_trend,
+
+            # Manager
+            "manager": manager_info,
         }
 
     except HTTPException:
@@ -397,4 +414,156 @@ async def get_contractor_dashboard(user: dict = Depends(verify_token)) -> Dict:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch contractor dashboard: {str(e)}",
+        )
+
+
+@router.get("/manager")
+async def get_manager_dashboard(user: dict = Depends(verify_token)) -> Dict:
+    """
+    Get dashboard statistics for the logged-in manager.
+    Shows own earnings, managed staff hours, device counts.
+    Managers see staff hours only — no earnings/rates.
+    """
+    try:
+        manager_id = get_manager_id(user["user_id"])
+        if not manager_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No manager profile linked to this account",
+            )
+
+        # Get manager info
+        manager_resp = supabase_admin_client.table("managers").select(
+            "id, first_name, last_name, email"
+        ).eq("id", manager_id).single().execute()
+        manager = manager_resp.data
+
+        # Get active manager assignments with staff info
+        ma_resp = supabase_admin_client.table("manager_assignments").select(
+            "id, contractor_assignment_id, flat_hourly_rate, is_active"
+        ).eq("manager_id", manager_id).eq("is_active", True).execute()
+        manager_assignments = ma_resp.data or []
+
+        # Get staff info for each assignment
+        staff_list = []
+        for ma in manager_assignments:
+            ca_resp = supabase_admin_client.table("contractor_assignments").select(
+                "id, contractor_id, client_company_id, "
+                "contractors(first_name, last_name), "
+                "client_companies(name)"
+            ).eq("id", ma["contractor_assignment_id"]).execute()
+
+            if ca_resp.data:
+                ca = ca_resp.data[0]
+                contractor = ca.get("contractors") or {}
+                client = ca.get("client_companies") or {}
+                staff_list.append({
+                    "contractor_assignment_id": ca["id"],
+                    "contractor_name": f"{contractor.get('first_name', '')} {contractor.get('last_name', '')}".strip(),
+                    "client_name": client.get("name", "Unknown"),
+                })
+
+        # Get manager earnings
+        earnings_resp = supabase_admin_client.table("manager_earnings").select(
+            "pay_period_begin, pay_period_end, staff_total_hours, flat_hourly_rate, "
+            "total_earnings, amount_paid, amount_pending, payment_status, contractor_assignment_id"
+        ).eq("manager_id", manager_id).order("pay_period_begin").execute()
+        earnings = earnings_resp.data or []
+
+        # Get device counts
+        ma_ids = [ma["id"] for ma in manager_assignments]
+        device_counts = {"total": 0, "in_use": 0, "received": 0, "delivered": 0}
+        if ma_ids:
+            devices_resp = supabase_admin_client.table("devices").select(
+                "status"
+            ).in_("manager_assignment_id", ma_ids).execute()
+            for d in (devices_resp.data or []):
+                device_counts["total"] += 1
+                s = d.get("status", "")
+                if s in device_counts:
+                    device_counts[s] += 1
+
+        # Aggregate earnings
+        now = datetime.now()
+        first_of_month = now.replace(day=1).date().isoformat()
+
+        total_earnings = 0.0
+        total_paid = 0.0
+        total_pending = 0.0
+        total_hours = 0.0
+        count_paid = 0
+        count_unpaid = 0
+        this_month_earnings = 0.0
+        this_month_hours = 0.0
+
+        # Staff hours tracking (hours only, no earnings)
+        staff_hours: Dict[str, float] = {}
+
+        for e in earnings:
+            earn = float(e.get("total_earnings") or 0)
+            paid = float(e.get("amount_paid") or 0)
+            pending = float(e.get("amount_pending") or 0)
+            hours = float(e.get("staff_total_hours") or 0)
+            pay_status = e.get("payment_status", "unpaid")
+            period_end = e.get("pay_period_end", "")
+            ca_id = e.get("contractor_assignment_id", "")
+
+            total_earnings += earn
+            total_paid += paid
+            total_pending += pending
+            total_hours += hours
+
+            if pay_status == "paid":
+                count_paid += 1
+            else:
+                count_unpaid += 1
+
+            if period_end >= first_of_month:
+                this_month_earnings += earn
+                this_month_hours += hours
+
+            # Accumulate hours per staff member
+            staff_hours[ca_id] = staff_hours.get(ca_id, 0) + hours
+
+        # Merge hours into staff_list
+        for staff in staff_list:
+            staff["total_hours"] = round(staff_hours.get(staff["contractor_assignment_id"], 0), 2)
+
+        payment_rate = (total_paid / total_earnings * 100) if total_earnings > 0 else 0
+
+        return {
+            "manager_name": f"{manager.get('first_name', '')} {manager.get('last_name', '')}".strip(),
+
+            # Staff
+            "staff_count": len(staff_list),
+            "staff": staff_list,
+
+            # Own earnings
+            "total_earnings": round(total_earnings, 2),
+            "total_paid": round(total_paid, 2),
+            "total_pending": round(total_pending, 2),
+            "total_hours": round(total_hours, 2),
+            "payment_rate": round(payment_rate, 1),
+            "count_paid": count_paid,
+            "count_unpaid": count_unpaid,
+
+            # This month
+            "this_month_earnings": round(this_month_earnings, 2),
+            "this_month_hours": round(this_month_hours, 2),
+
+            # Devices
+            "devices": device_counts,
+
+            # Date range
+            "earliest_period": earnings[0].get("pay_period_begin") if earnings else None,
+            "latest_period": earnings[-1].get("pay_period_end") if earnings else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching manager dashboard: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch manager dashboard: {str(e)}",
         )

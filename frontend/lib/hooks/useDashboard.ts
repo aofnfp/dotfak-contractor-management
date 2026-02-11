@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { dashboardApi, type DashboardStats, type ContractorDashboardStats } from '@/lib/api/dashboard'
+import { dashboardApi, type DashboardStats, type ContractorDashboardStats, type ManagerDashboardStats } from '@/lib/api/dashboard'
 
 /**
  * Hook to fetch dashboard statistics
@@ -27,6 +27,18 @@ export function useContractorDashboardStats() {
   return useQuery<ContractorDashboardStats>({
     queryKey: ['dashboard', 'contractor'],
     queryFn: dashboardApi.getContractorStats,
+    refetchInterval: 30000,
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+/**
+ * Hook to fetch manager's own dashboard statistics
+ */
+export function useManagerDashboardStats() {
+  return useQuery<ManagerDashboardStats>({
+    queryKey: ['dashboard', 'manager'],
+    queryFn: dashboardApi.getManagerStats,
     refetchInterval: 30000,
     placeholderData: (previousData) => previousData,
   })

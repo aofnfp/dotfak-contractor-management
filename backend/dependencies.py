@@ -171,6 +171,34 @@ async def require_contractor(authorization: Optional[str] = Header(None)) -> Dic
     return user
 
 
+async def require_manager(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    """
+    Require manager role (or admin).
+    """
+    user = await verify_token(authorization)
+
+    role = user.get("role")
+    if role not in ["manager", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager access required",
+        )
+
+    return user
+
+
+def get_manager_id(user_id: str) -> Optional[str]:
+    """
+    Get manager ID from auth user ID.
+    """
+    try:
+        result = supabase_admin_client.table("managers").select("id").eq("auth_user_id", user_id).single().execute()
+        return result.data.get("id") if result.data else None
+    except Exception as e:
+        logger.error(f"Failed to get manager ID for user {user_id}: {str(e)}")
+        return None
+
+
 def get_contractor_id(user_id: str) -> Optional[str]:
     """
     Get contractor ID from auth user ID.

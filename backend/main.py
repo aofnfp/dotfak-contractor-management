@@ -39,6 +39,11 @@ from backend.routers import (
     dashboard_router,
     onboarding_router,
     contracts_router,
+    managers_router,
+    manager_assignments_router,
+    manager_earnings_router,
+    manager_onboarding_router,
+    devices_router,
 )
 
 # Import tools
@@ -83,6 +88,11 @@ app.include_router(earnings_router)
 app.include_router(dashboard_router)
 app.include_router(onboarding_router)
 app.include_router(contracts_router)
+app.include_router(managers_router)
+app.include_router(manager_assignments_router)
+app.include_router(manager_earnings_router)
+app.include_router(manager_onboarding_router)
+app.include_router(devices_router)
 
 
 # Pydantic models
