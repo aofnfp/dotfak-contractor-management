@@ -57,8 +57,8 @@ export const ManagersTable = memo(function ManagersTable({ managers, isLoading }
     }
   }
 
-  const handleInvite = async (id: string) => {
-    await inviteManager.mutateAsync(id)
+  const handleInvite = async (id: string, email: string) => {
+    await inviteManager.mutateAsync({ id, email })
   }
 
   if (isLoading) {
@@ -154,7 +154,7 @@ export const ManagersTable = memo(function ManagersTable({ managers, isLoading }
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleInvite(manager.id)
+                          handleInvite(manager.id, manager.email)
                         }}
                         disabled={inviteManager.isPending}
                       >
