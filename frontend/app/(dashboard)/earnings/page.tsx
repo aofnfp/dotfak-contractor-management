@@ -219,21 +219,42 @@ function EarningsPageUI({
   )
 }
 
-// Manager: calls manager API, normalizes to shared shape, with payment status filter
+// Manager: calls manager API, normalizes to shared shape, with filters
 function ManagerEarningsPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | 'all'>('all')
+  const [staffFilter, setStaffFilter] = useState<string>('all')
 
-  const filters = {
-    payment_status: paymentStatus !== 'all' ? paymentStatus : undefined,
-  }
-
-  const { data: rawEarnings, isLoading, error } = useManagerEarnings(filters)
+  const { data: rawEarnings, isLoading, error } = useManagerEarnings()
   const { data: rawSummary, isLoading: summaryLoading } = useManagerEarningsSummary()
 
-  const earnings = useMemo(
+  const allEarnings = useMemo(
     () => rawEarnings ? normalizeManagerEarnings(rawEarnings) : undefined,
     [rawEarnings]
   )
+
+  // Build unique staff list from full dataset (unaffected by filters)
+  const staffMembers = useMemo(() => {
+    if (!rawEarnings) return []
+    const seen = new Map<string, string>()
+    for (const e of rawEarnings) {
+      const key = e.contractor_assignment_id
+      if (key && !seen.has(key) && e.contractor_name) {
+        seen.set(key, e.contractor_name)
+      }
+    }
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [rawEarnings])
+
+  // Apply client-side filters
+  const earnings = useMemo(() => {
+    if (!allEarnings) return undefined
+    return allEarnings.filter(e => {
+      if (paymentStatus !== 'all' && e.payment_status !== paymentStatus) return false
+      if (staffFilter !== 'all' && e.contractor_assignment_id !== staffFilter) return false
+      return true
+    })
+  }, [allEarnings, paymentStatus, staffFilter])
+
   const summary = useMemo(
     () => rawSummary ? normalizeManagerSummary(rawSummary) : undefined,
     [rawSummary]
@@ -245,7 +266,7 @@ function ManagerEarningsPage() {
         <CardTitle>Filter Earnings</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Payment Status</Label>
             <Select
@@ -260,6 +281,23 @@ function ManagerEarningsPage() {
                 <SelectItem value="unpaid">Unpaid</SelectItem>
                 <SelectItem value="partially_paid">Partially Paid</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Staff Member</Label>
+            <Select value={staffFilter} onValueChange={setStaffFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staffMembers.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id}>
+                    {staff.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
