@@ -9,10 +9,11 @@ import { toast } from 'sonner'
 /**
  * Hook to fetch all contractors
  */
-export function useContractors() {
+export function useContractors(enabled = true) {
   return useQuery({
     queryKey: ['contractors'],
     queryFn: contractorsApi.getAll,
+    enabled,
   })
 }
 

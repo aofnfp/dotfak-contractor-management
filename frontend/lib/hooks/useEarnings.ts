@@ -69,9 +69,10 @@ export function useEarningsByIds(ids: string[]) {
 /**
  * Get earnings summary stats
  */
-export function useEarningsSummary() {
+export function useEarningsSummary(enabled = true) {
   return useQuery({
     queryKey: ['earnings', 'summary'],
     queryFn: () => earningsApi.getSummary(),
+    enabled,
   })
 }

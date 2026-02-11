@@ -15,6 +15,7 @@ import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useEarnings, useEarningsSummary } from '@/lib/hooks/useEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { DollarSign, CheckCircle2, AlertCircle, Download, CreditCard } from 'lucide-react'
@@ -23,6 +24,8 @@ import Link from 'next/link'
 import type { PaymentStatus } from '@/lib/types/earning'
 
 export default function EarningsPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | 'all'>('all')
   const [contractorId, setContractorId] = useState<string>('all')
   const [clientId, setClientId] = useState<string>('all')
@@ -35,9 +38,9 @@ export default function EarningsPage() {
   }
 
   const { data: earnings, isLoading, error } = useEarnings(filters)
-  const { data: summary, isLoading: summaryLoading } = useEarningsSummary()
-  const { data: contractors } = useContractors()
-  const { data: clients } = useClients()
+  const { data: summary, isLoading: summaryLoading } = useEarningsSummary(isAdmin)
+  const { data: contractors } = useContractors(isAdmin)
+  const { data: clients } = useClients(isAdmin)
 
   // Export earnings to CSV
   const handleExport = () => {
@@ -92,27 +95,29 @@ export default function EarningsPage() {
             View and manage contractor earnings from paystubs
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/earnings/unpaid">
-            <Button className="bg-cta hover:bg-cta/90 gap-2">
-              <CreditCard className="h-4 w-4" />
-              Unpaid Earnings
+        {isAdmin && (
+          <div className="flex gap-3">
+            <Link href="/earnings/unpaid">
+              <Button className="bg-cta hover:bg-cta/90 gap-2">
+                <CreditCard className="h-4 w-4" />
+                Unpaid Earnings
+              </Button>
+            </Link>
+            <Button
+              onClick={handleExport}
+              disabled={!earnings || earnings.length === 0 || isLoading}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
             </Button>
-          </Link>
-          <Button
-            onClick={handleExport}
-            disabled={!earnings || earnings.length === 0 || isLoading}
-            variant="outline"
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Summary Stats */}
-      {summaryLoading ? (
+      {/* Summary Stats (admin only) */}
+      {isAdmin && summaryLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -221,40 +226,44 @@ export default function EarningsPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Contractor</Label>
-              <Select value={contractorId} onValueChange={setContractorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All contractors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Contractors</SelectItem>
-                  {contractors?.map((contractor) => (
-                    <SelectItem key={contractor.id} value={contractor.id}>
-                      {contractor.contractor_code} - {contractor.first_name}{' '}
-                      {contractor.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label>Contractor</Label>
+                <Select value={contractorId} onValueChange={setContractorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All contractors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Contractors</SelectItem>
+                    {contractors?.map((contractor) => (
+                      <SelectItem key={contractor.id} value={contractor.id}>
+                        {contractor.contractor_code} - {contractor.first_name}{' '}
+                        {contractor.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label>Client Company</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All clients" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Clients</SelectItem>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.code} - {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label>Client Company</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All clients" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clients?.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.code} - {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

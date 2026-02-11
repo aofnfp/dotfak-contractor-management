@@ -71,10 +71,11 @@ export function useAllocationPreview(contractorId: string, amount: number) {
 /**
  * Get payment summary stats
  */
-export function usePaymentsSummary() {
+export function usePaymentsSummary(enabled = true) {
   return useQuery({
     queryKey: ['payments', 'summary'],
     queryFn: () => paymentsApi.getSummary(),
+    enabled,
   })
 }
 

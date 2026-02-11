@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PaymentTable } from '@/components/payments/PaymentTable'
 import { usePayments, usePaymentsSummary } from '@/lib/hooks/usePayments'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { DollarSign, CreditCard, TrendingUp, Download } from 'lucide-react'
@@ -15,8 +16,10 @@ import { DollarSign, CreditCard, TrendingUp, Download } from 'lucide-react'
  * View all contractor payments with summary stats
  */
 export default function PaymentsPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const { data: payments, isLoading, error } = usePayments()
-  const { data: summary, isLoading: summaryLoading } = usePaymentsSummary()
+  const { data: summary, isLoading: summaryLoading } = usePaymentsSummary(isAdmin)
 
   // Export payments to CSV
   const handleExport = () => {
@@ -59,27 +62,29 @@ export default function PaymentsPage() {
             View and manage contractor payment records
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleExport}
-            disabled={!payments || payments.length === 0 || isLoading}
-            variant="outline"
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-          <Link href="/payments/new">
-            <Button className="bg-cta hover:bg-cta/90">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Record Payment
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExport}
+              disabled={!payments || payments.length === 0 || isLoading}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
             </Button>
-          </Link>
-        </div>
+            <Link href="/payments/new">
+              <Button className="bg-cta hover:bg-cta/90">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Record Payment
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* Summary Stats */}
-      {summaryLoading ? (
+      {/* Summary Stats (admin only) */}
+      {isAdmin && summaryLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">

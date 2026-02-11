@@ -17,10 +17,11 @@ export function useContract(id: string) {
   })
 }
 
-export function usePendingSignatures() {
+export function usePendingSignatures(enabled = true) {
   return useQuery({
     queryKey: ['contracts', 'pending-signatures'],
     queryFn: () => contractsApi.listPendingSignatures(),
+    enabled,
   })
 }
 

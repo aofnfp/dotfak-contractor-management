@@ -24,13 +24,16 @@ import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { Pagination } from '@/components/ui/pagination'
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge'
 import { useContracts, usePendingSignatures } from '@/lib/hooks/useContracts'
+import { useAuth } from '@/lib/hooks/useAuth'
 import type { ContractStatus } from '@/lib/types/contract'
 
 const ITEMS_PER_PAGE = 20
 
 export default function ContractsPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const { data: contracts, isLoading, error } = useContracts()
-  const { data: pending } = usePendingSignatures()
+  const { data: pending } = usePendingSignatures(isAdmin)
 
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -67,8 +70,8 @@ export default function ContractsPage() {
         </p>
       </div>
 
-      {/* Pending signatures banner */}
-      {pending && pending.length > 0 && (
+      {/* Pending signatures banner (admin only) */}
+      {isAdmin && pending && pending.length > 0 && (
         <Card className="border-orange-500/30 bg-orange-500/5">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertTriangle className="h-5 w-5 text-orange-400 shrink-0" />

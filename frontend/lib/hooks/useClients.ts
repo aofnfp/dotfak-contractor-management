@@ -8,10 +8,11 @@ import { clientsApi } from '@/lib/api/clients'
 /**
  * Hook to fetch all client companies
  */
-export function useClients() {
+export function useClients(enabled = true) {
   return useQuery({
     queryKey: ['clients'],
     queryFn: clientsApi.getAll,
+    enabled,
   })
 }
 
