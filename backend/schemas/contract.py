@@ -16,8 +16,9 @@ from uuid import UUID
 class ContractResponse(BaseModel):
     """Schema for full contract response."""
     id: UUID
-    contractor_id: UUID
-    assignment_id: UUID
+    contractor_id: Optional[UUID] = None
+    manager_id: Optional[UUID] = None
+    assignment_id: Optional[UUID] = None
     contract_type: str
     version: int
     parent_contract_id: Optional[UUID] = None
@@ -28,6 +29,7 @@ class ContractResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     contractor_name: Optional[str] = None
+    manager_name: Optional[str] = None
     client_name: Optional[str] = None
     signatures: Optional[List[dict]] = None
 
@@ -38,8 +40,9 @@ class ContractResponse(BaseModel):
 class ContractListItem(BaseModel):
     """Schema for contract in list view."""
     id: UUID
-    contractor_id: UUID
-    assignment_id: UUID
+    contractor_id: Optional[UUID] = None
+    manager_id: Optional[UUID] = None
+    assignment_id: Optional[UUID] = None
     contract_type: str
     version: int
     status: str
@@ -47,6 +50,7 @@ class ContractListItem(BaseModel):
     created_at: datetime
     contractor_name: Optional[str] = None
     contractor_code: Optional[str] = None
+    manager_name: Optional[str] = None
     client_name: Optional[str] = None
 
     class Config:

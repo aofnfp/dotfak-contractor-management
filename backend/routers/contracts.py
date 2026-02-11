@@ -39,6 +39,13 @@ def _enrich_contract(contract: dict) -> dict:
             enriched["contractor_name"] = f"{c.data[0]['first_name']} {c.data[0]['last_name']}"
             enriched["contractor_code"] = c.data[0]["contractor_code"]
 
+    if contract.get("manager_id"):
+        m = supabase_admin_client.table("managers").select(
+            "first_name, last_name"
+        ).eq("id", contract["manager_id"]).execute()
+        if m.data:
+            enriched["manager_name"] = f"{m.data[0]['first_name']} {m.data[0]['last_name']}"
+
     if contract.get("assignment_id"):
         a = supabase_admin_client.table("contractor_assignments").select(
             "client_company_id"
