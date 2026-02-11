@@ -59,7 +59,8 @@ export default function ManagerDetailPage() {
   }
 
   const handleInvite = async () => {
-    await inviteManager.mutateAsync(managerId)
+    if (!manager?.email) return
+    await inviteManager.mutateAsync({ id: managerId, email: manager.email })
   }
 
   if (isLoading) {

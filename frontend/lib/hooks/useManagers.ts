@@ -74,14 +74,17 @@ export function useInviteManager() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: managersApi.invite,
-    onSuccess: (_, id) => {
+    mutationFn: ({ id, email }: { id: string; email: string }) =>
+      managersApi.invite(id, email),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['managers'] })
       queryClient.invalidateQueries({ queryKey: ['managers', id] })
       toast.success('Invitation sent successfully')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to send invitation')
+      const detail = error.response?.data?.detail
+      const message = typeof detail === 'string' ? detail : 'Failed to send invitation'
+      toast.error(message)
     },
   })
 }

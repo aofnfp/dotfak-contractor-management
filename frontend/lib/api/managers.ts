@@ -39,8 +39,8 @@ export const managersApi = {
     await apiClient.delete(`/managers/${id}`)
   },
 
-  invite: async (id: string): Promise<{ message: string }> => {
-    const response = await apiClient.post(`/managers/${id}/invite`)
+  invite: async (id: string, email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/managers/${id}/invite`, { email })
     return response.data
   },
 }
