@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -11,8 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useEarnings, useEarningsSummary } from '@/lib/hooks/useEarnings'
+import { useManagerEarnings, useManagerEarningsSummary } from '@/lib/hooks/useManagerEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -20,17 +28,184 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { DollarSign, CheckCircle2, AlertCircle, Download, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import type { PaymentStatus } from '@/lib/types/earning'
+import type { ManagerEarning } from '@/lib/types/manager'
 
-export default function EarningsPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+function PaymentStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    paid: 'bg-green-500/10 text-green-500 border-green-500/20',
+    partially_paid: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    unpaid: 'bg-red-500/10 text-red-500 border-red-500/20',
+    overpaid: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  }
+  const labels: Record<string, string> = {
+    paid: 'Paid',
+    partially_paid: 'Partial',
+    unpaid: 'Unpaid',
+    overpaid: 'Overpaid',
+  }
+  return (
+    <Badge variant="outline" className={styles[status] || ''}>
+      {labels[status] || status}
+    </Badge>
+  )
+}
+
+function ManagerEarningsView() {
+  const { data: earnings, isLoading, error } = useManagerEarnings()
+  const { data: summary, isLoading: summaryLoading } = useManagerEarningsSummary()
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Earnings</h1>
+        <p className="text-muted-foreground mt-2">
+          Your earnings from managed staff paystubs
+        </p>
+      </div>
+
+      {/* Summary Stats */}
+      {summaryLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Loading...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : summary ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {formatCurrency(summary.total_earnings)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {summary.count_total} pay period{summary.count_total !== 1 ? 's' : ''}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-cta" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cta">
+                {formatCurrency(summary.total_paid)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {summary.count_paid} fully paid
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Pending</CardTitle>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${summary.total_pending > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {formatCurrency(summary.total_pending)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {summary.count_unpaid} unpaid, {summary.count_partially_paid} partial
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* Earnings Table */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
+        </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-destructive">Error loading earnings</p>
+          </CardContent>
+        </Card>
+      ) : earnings && earnings.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Earnings History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead>Staff</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Pay Period</TableHead>
+                  <TableHead className="text-right">Hours</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {earnings.map((earning: ManagerEarning) => (
+                  <TableRow key={earning.id} className="border-border">
+                    <TableCell className="font-medium">
+                      {earning.contractor_name || '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {earning.client_name || '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {earning.pay_period_begin && earning.pay_period_end
+                        ? `${formatDate(earning.pay_period_begin)} - ${formatDate(earning.pay_period_end)}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {earning.staff_total_hours.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatCurrency(earning.flat_hourly_rate)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(earning.total_earnings)}
+                    </TableCell>
+                    <TableCell>
+                      <PaymentStatusBadge status={earning.payment_status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">No earnings found yet.</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function ContractorEarningsView({ isAdmin }: { isAdmin: boolean }) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | 'all'>('all')
   const [contractorId, setContractorId] = useState<string>('all')
   const [clientId, setClientId] = useState<string>('all')
 
-  // Build filters
   const filters = {
     payment_status: paymentStatus !== 'all' ? paymentStatus : undefined,
     contractor_id: contractorId !== 'all' ? contractorId : undefined,
@@ -42,11 +217,8 @@ export default function EarningsPage() {
   const { data: contractors } = useContractors(isAdmin)
   const { data: clients } = useClients(isAdmin)
 
-  // Export earnings to CSV
   const handleExport = () => {
-    if (!earnings || earnings.length === 0) {
-      return
-    }
+    if (!earnings || earnings.length === 0) return
 
     const exportData = earnings.map(earning => ({
       contractor_code: earning.contractor_code || '',
@@ -87,7 +259,6 @@ export default function EarningsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Earnings</h1>
@@ -116,7 +287,6 @@ export default function EarningsPage() {
         )}
       </div>
 
-      {/* Summary Stats (admin only) */}
       {isAdmin && summaryLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
@@ -201,7 +371,6 @@ export default function EarningsPage() {
         </div>
       ) : null}
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Filter Earnings</CardTitle>
@@ -268,7 +437,6 @@ export default function EarningsPage() {
         </CardContent>
       </Card>
 
-      {/* Earnings Table */}
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
@@ -284,4 +452,16 @@ export default function EarningsPage() {
       ) : null}
     </div>
   )
+}
+
+export default function EarningsPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const isManager = user?.role === 'manager'
+
+  if (isManager) {
+    return <ManagerEarningsView />
+  }
+
+  return <ContractorEarningsView isAdmin={isAdmin} />
 }
