@@ -38,6 +38,10 @@ class ManagerPaymentCreate(BaseModel):
     payment_date: date
     transaction_reference: Optional[str] = None
     notes: Optional[str] = None
+    allocate_to_earnings: Optional[List[dict]] = Field(
+        None,
+        description="Optional: Manually specify which earnings to allocate to. Format: [{'earning_id': 'uuid', 'amount': 100.00}]"
+    )
 
 
 @router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
@@ -318,49 +322,90 @@ async def record_manager_payment(
         mgr_payment = result.data[0]
         payment_id = mgr_payment["id"]
 
-        # FIFO allocation to unpaid manager_earnings
-        unpaid = supabase_admin_client.table("manager_earnings").select("*").eq(
-            "manager_id", payment.manager_id
-        ).in_("payment_status", ["unpaid", "partially_paid"]).order(
-            "pay_period_begin", desc=False
-        ).execute()
-
+        # Determine allocations: manual (from request) or FIFO (auto)
         remaining = payment_amount
         allocations = []
 
-        for earning in (unpaid.data or []):
-            if remaining <= 0:
-                break
-            pending = Decimal(str(earning.get("amount_pending") or 0))
-            if pending <= 0:
-                continue
+        if payment.allocate_to_earnings:
+            # Manual allocation mode — allocate to specified earnings
+            for alloc_spec in payment.allocate_to_earnings:
+                earning_id = alloc_spec.get("earning_id")
+                alloc_amount = Decimal(str(alloc_spec.get("amount", 0)))
+                if not earning_id or alloc_amount <= 0:
+                    continue
 
-            alloc_amount = min(remaining, pending)
-            remaining -= alloc_amount
+                earning_result = supabase_admin_client.table("manager_earnings").select("*").eq(
+                    "id", earning_id
+                ).execute()
+                if not earning_result.data:
+                    continue
 
-            # Save allocation
-            supabase_admin_client.table("manager_payment_allocations").insert({
-                "payment_id": payment_id,
-                "manager_earning_id": earning["id"],
-                "amount_allocated": float(alloc_amount),
-            }).execute()
+                earning = earning_result.data[0]
 
-            # Update earning
-            new_paid = Decimal(str(earning.get("amount_paid") or 0)) + alloc_amount
-            total = Decimal(str(earning.get("total_earnings") or 0))
-            new_pending = total - new_paid
-            new_status = "paid" if new_pending <= 0 else ("partially_paid" if new_paid > 0 else "unpaid")
+                # Save allocation
+                supabase_admin_client.table("manager_payment_allocations").insert({
+                    "payment_id": payment_id,
+                    "manager_earning_id": earning["id"],
+                    "amount_allocated": float(alloc_amount),
+                }).execute()
 
-            supabase_admin_client.table("manager_earnings").update({
-                "amount_paid": float(new_paid),
-                "amount_pending": float(new_pending),
-                "payment_status": new_status,
-            }).eq("id", earning["id"]).execute()
+                # Update earning
+                new_paid = Decimal(str(earning.get("amount_paid") or 0)) + alloc_amount
+                total = Decimal(str(earning.get("total_earnings") or 0))
+                new_pending = total - new_paid
+                new_status = "paid" if new_pending <= 0 else ("partially_paid" if new_paid > 0 else "unpaid")
 
-            allocations.append({
-                "earning_id": earning["id"],
-                "amount": float(alloc_amount),
-            })
+                supabase_admin_client.table("manager_earnings").update({
+                    "amount_paid": float(new_paid),
+                    "amount_pending": float(new_pending),
+                    "payment_status": new_status,
+                }).eq("id", earning["id"]).execute()
+
+                allocations.append({
+                    "earning_id": earning["id"],
+                    "amount": float(alloc_amount),
+                })
+        else:
+            # FIFO allocation to unpaid manager_earnings
+            unpaid = supabase_admin_client.table("manager_earnings").select("*").eq(
+                "manager_id", payment.manager_id
+            ).in_("payment_status", ["unpaid", "partially_paid"]).order(
+                "pay_period_begin", desc=False
+            ).execute()
+
+            for earning in (unpaid.data or []):
+                if remaining <= 0:
+                    break
+                pending = Decimal(str(earning.get("amount_pending") or 0))
+                if pending <= 0:
+                    continue
+
+                alloc_amount = min(remaining, pending)
+                remaining -= alloc_amount
+
+                # Save allocation
+                supabase_admin_client.table("manager_payment_allocations").insert({
+                    "payment_id": payment_id,
+                    "manager_earning_id": earning["id"],
+                    "amount_allocated": float(alloc_amount),
+                }).execute()
+
+                # Update earning
+                new_paid = Decimal(str(earning.get("amount_paid") or 0)) + alloc_amount
+                total = Decimal(str(earning.get("total_earnings") or 0))
+                new_pending = total - new_paid
+                new_status = "paid" if new_pending <= 0 else ("partially_paid" if new_paid > 0 else "unpaid")
+
+                supabase_admin_client.table("manager_earnings").update({
+                    "amount_paid": float(new_paid),
+                    "amount_pending": float(new_pending),
+                    "payment_status": new_status,
+                }).eq("id", earning["id"]).execute()
+
+                allocations.append({
+                    "earning_id": earning["id"],
+                    "amount": float(alloc_amount),
+                })
 
         mgr_payment["allocations"] = allocations
         logger.info(f"Manager payment recorded: ${payment.amount} to manager {payment.manager_id}, allocated to {len(allocations)} earning(s)")
@@ -414,6 +459,53 @@ async def list_manager_payments(
 
     except Exception as e:
         logger.error(f"Failed to list manager payments: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/manager/preview-allocation")
+async def preview_manager_allocation(
+    manager_id: str,
+    amount: float,
+    user: dict = Depends(require_admin),
+):
+    """
+    Preview how a payment amount would be allocated to a manager's unpaid earnings (FIFO).
+    """
+    try:
+        payment_amount = Decimal(str(amount))
+
+        unpaid = supabase_admin_client.table("manager_earnings").select("*").eq(
+            "manager_id", manager_id
+        ).in_("payment_status", ["unpaid", "partially_paid"]).order(
+            "pay_period_begin", desc=False
+        ).execute()
+
+        remaining = payment_amount
+        preview = []
+
+        for earning in (unpaid.data or []):
+            pending = Decimal(str(earning.get("amount_pending") or 0))
+            if pending <= 0:
+                continue
+
+            will_allocate = min(remaining, pending) if remaining > 0 else Decimal("0")
+            new_pending = pending - will_allocate
+            remaining -= will_allocate
+
+            preview.append({
+                "earning_id": earning["id"],
+                "pay_period_begin": earning.get("pay_period_begin"),
+                "pay_period_end": earning.get("pay_period_end"),
+                "current_pending": float(pending),
+                "will_allocate": float(will_allocate),
+                "new_pending": float(new_pending),
+                "fully_paid": new_pending <= 0 and will_allocate > 0,
+            })
+
+        return preview
+
+    except Exception as e:
+        logger.error(f"Failed to preview manager allocation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

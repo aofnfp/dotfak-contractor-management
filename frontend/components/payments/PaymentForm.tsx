@@ -26,12 +26,21 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useContractors } from '@/lib/hooks/useContractors'
+import { useManagers } from '@/lib/hooks/useManagers'
 import { useEarningsByIds } from '@/lib/hooks/useEarnings'
-import { useCreatePayment, useAllocationPreview } from '@/lib/hooks/usePayments'
-import { paymentsApi } from '@/lib/api/payments'
+import { useManagerEarningsByIds } from '@/lib/hooks/useManagerEarnings'
+import {
+  useCreatePayment,
+  useAllocationPreview,
+  useCreateManagerPayment,
+  useManagerAllocationPreview,
+} from '@/lib/hooks/usePayments'
+import { paymentsApi, managerPaymentsApi } from '@/lib/api/payments'
+import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import type { PaymentMethod } from '@/lib/types/payment'
+import type { EarningWithDetails } from '@/lib/types/earning'
 
 interface IndividualPaymentRow {
   earning_id: string
@@ -45,7 +54,7 @@ interface IndividualPaymentRow {
 }
 
 const paymentFormSchema = z.object({
-  contractor_id: z.string().min(1, 'Contractor is required'),
+  person_id: z.string().min(1, 'Required'),
   amount: z.number().positive('Amount must be positive'),
   payment_method: z.enum(['direct_deposit', 'check', 'cash', 'wire_transfer', 'other']),
   payment_date: z.string().min(1, 'Payment date is required'),
@@ -58,8 +67,20 @@ type PaymentFormData = z.infer<typeof paymentFormSchema>
 export function PaymentForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: contractors } = useContractors()
-  const createPayment = useCreatePayment()
+
+  // Detect payment target: contractor (default) or manager
+  const paymentTarget = searchParams.get('type') === 'manager' ? 'manager' : 'contractor'
+  const isManagerTarget = paymentTarget === 'manager'
+  const personLabel = isManagerTarget ? 'Manager' : 'Contractor'
+
+  // Data sources — both called, only the relevant one is enabled/used
+  const { data: contractors } = useContractors(!isManagerTarget)
+  const { data: managers } = useManagers(isManagerTarget)
+
+  // Mutations — both instantiated, use the right one based on target
+  const createContractorPayment = useCreatePayment()
+  const createManagerPayment = useCreateManagerPayment()
+  const isSubmitting = createContractorPayment.isPending || createManagerPayment.isPending
 
   // Check for manual allocation mode (earning_ids in URL)
   const earningIdsParam = searchParams.get('earning_ids')
@@ -74,23 +95,40 @@ export function PaymentForm() {
   const [paymentMode, setPaymentMode] = useState<'single' | 'individual'>('single')
   const isIndividualMode = isManualMode && isMultiEarning && paymentMode === 'individual'
 
-  // Fetch pre-selected earnings for manual mode
-  const { data: selectedEarnings, isLoading: earningsLoading } = useEarningsByIds(earningIds)
+  // Fetch pre-selected earnings — use the right source based on target
+  const { data: contractorEarnings, isLoading: contractorEarningsLoading } = useEarningsByIds(
+    isManagerTarget ? [] : earningIds
+  )
+  const { data: rawManagerEarnings, isLoading: managerEarningsLoading } = useManagerEarningsByIds(
+    isManagerTarget ? earningIds : []
+  )
 
-  // Derive contractor and amount from selected earnings
+  // Normalize manager earnings to EarningWithDetails shape
+  const managerEarnings = useMemo(
+    () => (rawManagerEarnings ? normalizeManagerEarnings(rawManagerEarnings) : undefined),
+    [rawManagerEarnings]
+  )
+
+  // Unified selected earnings — from whichever source is active
+  const selectedEarnings: EarningWithDetails[] | undefined = isManagerTarget
+    ? managerEarnings
+    : contractorEarnings
+  const earningsLoading = isManagerTarget ? managerEarningsLoading : contractorEarningsLoading
+
+  // Derive person info and amount from selected earnings
   const manualInfo = useMemo(() => {
     if (!selectedEarnings || selectedEarnings.length === 0) {
-      return { contractorId: '', contractorName: '', totalPending: 0 }
+      return { personId: '', personName: '', totalPending: 0 }
     }
     const first = selectedEarnings[0]
     return {
-      contractorId: first.contractor_id,
-      contractorName: `${first.contractor_code} - ${first.contractor_name}`,
+      personId: first.contractor_id, // For manager target, this is manager_id (set by normalizer)
+      personName: `${first.contractor_code} - ${first.contractor_name}`,
       totalPending: selectedEarnings.reduce((sum, e) => sum + e.amount_pending, 0),
     }
   }, [selectedEarnings])
 
-  const [selectedContractorId, setSelectedContractorId] = useState<string>('')
+  const [selectedPersonId, setSelectedPersonId] = useState<string>('')
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [debouncedAmount, setDebouncedAmount] = useState<number>(0)
 
@@ -116,14 +154,14 @@ export function PaymentForm() {
 
   // Auto-fill form values when manual mode earnings load
   useEffect(() => {
-    if (isManualMode && manualInfo.contractorId) {
-      setSelectedContractorId(manualInfo.contractorId)
-      setValue('contractor_id', manualInfo.contractorId, { shouldValidate: true })
+    if (isManualMode && manualInfo.personId) {
+      setSelectedPersonId(manualInfo.personId)
+      setValue('person_id', manualInfo.personId, { shouldValidate: true })
       setPaymentAmount(manualInfo.totalPending)
       setDebouncedAmount(manualInfo.totalPending)
       setValue('amount', manualInfo.totalPending, { shouldValidate: true })
     }
-  }, [isManualMode, manualInfo.contractorId, manualInfo.totalPending, setValue])
+  }, [isManualMode, manualInfo.personId, manualInfo.totalPending, setValue])
 
   // Initialize individual rows when earnings load or mode switches
   useEffect(() => {
@@ -153,11 +191,18 @@ export function PaymentForm() {
     return () => clearTimeout(timeoutId)
   }, [paymentAmount, isManualMode])
 
-  // Fetch allocation preview with debounced amount — only for FIFO mode
-  const { data: allocationPreview, isLoading: previewLoading } = useAllocationPreview(
-    isManualMode ? '' : selectedContractorId,
-    isManualMode ? 0 : debouncedAmount
+  // Fetch allocation preview — use the right endpoint based on target
+  const { data: contractorPreview, isLoading: contractorPreviewLoading } = useAllocationPreview(
+    isManualMode || isManagerTarget ? '' : selectedPersonId,
+    isManualMode || isManagerTarget ? 0 : debouncedAmount
   )
+  const { data: managerPreview, isLoading: managerPreviewLoading } = useManagerAllocationPreview(
+    isManualMode || !isManagerTarget ? '' : selectedPersonId,
+    isManualMode || !isManagerTarget ? 0 : debouncedAmount
+  )
+
+  const allocationPreview = isManagerTarget ? managerPreview : contractorPreview
+  const previewLoading = isManagerTarget ? managerPreviewLoading : contractorPreviewLoading
 
   // Memoize FIFO summary calculations
   const fifoSummary = useMemo(() => {
@@ -179,24 +224,46 @@ export function PaymentForm() {
 
   // Single payment submit
   const onSubmit = async (data: PaymentFormData) => {
-    const payload: any = { ...data }
-
-    // In manual mode, include explicit allocations
-    if (isManualMode && selectedEarnings) {
-      payload.allocate_to_earnings = selectedEarnings.map((e) => ({
-        earning_id: e.id,
-        amount: e.amount_pending,
-      }))
+    if (isManagerTarget) {
+      const payload: any = {
+        manager_id: data.person_id,
+        amount: data.amount,
+        payment_method: data.payment_method,
+        payment_date: data.payment_date,
+        transaction_reference: data.transaction_reference,
+        notes: data.notes,
+      }
+      if (isManualMode && selectedEarnings) {
+        payload.allocate_to_earnings = selectedEarnings.map((e) => ({
+          earning_id: e.id,
+          amount: e.amount_pending,
+        }))
+      }
+      await createManagerPayment.mutateAsync(payload)
+    } else {
+      const payload: any = {
+        contractor_id: data.person_id,
+        amount: data.amount,
+        payment_method: data.payment_method,
+        payment_date: data.payment_date,
+        transaction_reference: data.transaction_reference,
+        notes: data.notes,
+      }
+      if (isManualMode && selectedEarnings) {
+        payload.allocate_to_earnings = selectedEarnings.map((e) => ({
+          earning_id: e.id,
+          amount: e.amount_pending,
+        }))
+      }
+      await createContractorPayment.mutateAsync(payload)
     }
-
-    await createPayment.mutateAsync(payload)
     router.push('/payments')
   }
 
   // Individual payments submit
   const handleIndividualSubmit = async () => {
     const validRows = individualRows.filter((r) => r.amount > 0)
-    if (validRows.length === 0 || !manualInfo.contractorId) return
+    if (validRows.length === 0 || !manualInfo.personId) return
 
     setIsSubmittingIndividual(true)
     setSubmitProgress({ current: 0, total: validRows.length })
@@ -204,15 +271,27 @@ export function PaymentForm() {
     try {
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i]
-        await paymentsApi.create({
-          contractor_id: manualInfo.contractorId,
-          amount: row.amount,
-          payment_method: row.payment_method,
-          payment_date: row.payment_date,
-          transaction_reference: row.transaction_reference || undefined,
-          notes: sharedNotes || undefined,
-          allocate_to_earnings: [{ earning_id: row.earning_id, amount: row.amount }],
-        })
+        if (isManagerTarget) {
+          await managerPaymentsApi.create({
+            manager_id: manualInfo.personId,
+            amount: row.amount,
+            payment_method: row.payment_method,
+            payment_date: row.payment_date,
+            transaction_reference: row.transaction_reference || undefined,
+            notes: sharedNotes || undefined,
+            allocate_to_earnings: [{ earning_id: row.earning_id, amount: row.amount }],
+          })
+        } else {
+          await paymentsApi.create({
+            contractor_id: manualInfo.personId,
+            amount: row.amount,
+            payment_method: row.payment_method,
+            payment_date: row.payment_date,
+            transaction_reference: row.transaction_reference || undefined,
+            notes: sharedNotes || undefined,
+            allocate_to_earnings: [{ earning_id: row.earning_id, amount: row.amount }],
+          })
+        }
         setSubmitProgress({ current: i + 1, total: validRows.length })
       }
       router.push('/payments')
@@ -223,9 +302,9 @@ export function PaymentForm() {
     }
   }
 
-  const handleContractorChange = (contractorId: string) => {
-    setSelectedContractorId(contractorId)
-    setValue('contractor_id', contractorId)
+  const handlePersonChange = (personId: string) => {
+    setSelectedPersonId(personId)
+    setValue('person_id', personId)
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -296,7 +375,6 @@ export function PaymentForm() {
       {isIndividualMode ? (
         /* ===== INDIVIDUAL PAYMENTS MODE ===== */
         <div className="space-y-6">
-          {/* Contractor (locked) */}
           <Card>
             <CardHeader>
               <CardTitle>Individual Payments</CardTitle>
@@ -306,9 +384,9 @@ export function PaymentForm() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Contractor</Label>
+                <Label>{personLabel}</Label>
                 <Input
-                  value={manualInfo.contractorName}
+                  value={manualInfo.personName}
                   disabled
                   className="bg-secondary/30"
                 />
@@ -449,7 +527,7 @@ export function PaymentForm() {
           </div>
         </div>
       ) : (
-        /* ===== SINGLE PAYMENT MODE (existing) ===== */
+        /* ===== SINGLE PAYMENT MODE ===== */
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Payment Details */}
@@ -458,24 +536,40 @@ export function PaymentForm() {
                 <CardTitle>Payment Details</CardTitle>
                 <CardDescription>
                   {isManualMode
-                    ? 'Paying selected earnings — contractor and amount are pre-filled'
+                    ? `Paying selected earnings — ${personLabel.toLowerCase()} and amount are pre-filled`
                     : 'Enter the payment information'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Contractor Selection */}
+                {/* Person Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="contractor_id">Contractor *</Label>
+                  <Label htmlFor="person_id">{personLabel} *</Label>
                   {isManualMode ? (
                     <Input
-                      value={manualInfo.contractorName}
+                      value={manualInfo.personName}
                       disabled
                       className="bg-secondary/30"
                     />
+                  ) : isManagerTarget ? (
+                    <Select
+                      onValueChange={handlePersonChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {managers?.map((manager) => (
+                          <SelectItem key={manager.id} value={manager.id}>
+                            {manager.first_name} {manager.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Select
-                      onValueChange={handleContractorChange}
-                      disabled={createPayment.isPending}
+                      onValueChange={handlePersonChange}
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a contractor" />
@@ -490,8 +584,8 @@ export function PaymentForm() {
                       </SelectContent>
                     </Select>
                   )}
-                  {errors.contractor_id && (
-                    <p className="text-sm text-destructive" role="alert" aria-live="polite">{errors.contractor_id.message}</p>
+                  {errors.person_id && (
+                    <p className="text-sm text-destructive" role="alert" aria-live="polite">{errors.person_id.message}</p>
                   )}
                 </div>
 
@@ -506,7 +600,7 @@ export function PaymentForm() {
                     placeholder="0.00"
                     value={paymentAmount || ''}
                     onChange={handleAmountChange}
-                    disabled={createPayment.isPending}
+                    disabled={isSubmitting}
                   />
                   {errors.amount && (
                     <p className="text-sm text-destructive" role="alert" aria-live="polite">{errors.amount.message}</p>
@@ -521,7 +615,7 @@ export function PaymentForm() {
                       setValue('payment_method', value as PaymentMethod)
                     }
                     defaultValue="direct_deposit"
-                    disabled={createPayment.isPending}
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -543,7 +637,7 @@ export function PaymentForm() {
                     id="payment_date"
                     type="date"
                     {...register('payment_date')}
-                    disabled={createPayment.isPending}
+                    disabled={isSubmitting}
                   />
                   {errors.payment_date && (
                     <p className="text-sm text-destructive" role="alert" aria-live="polite">{errors.payment_date.message}</p>
@@ -557,7 +651,7 @@ export function PaymentForm() {
                     id="transaction_reference"
                     placeholder="e.g., CHECK-12345 or TXN-ABC123"
                     {...register('transaction_reference')}
-                    disabled={createPayment.isPending}
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -569,7 +663,7 @@ export function PaymentForm() {
                     placeholder="Optional notes about this payment"
                     rows={3}
                     {...register('notes')}
-                    disabled={createPayment.isPending}
+                    disabled={isSubmitting}
                   />
                 </div>
               </CardContent>
@@ -668,12 +762,12 @@ export function PaymentForm() {
                     </div>
                   )
                 ) : (
-                  /* FIFO mode: existing preview */
-                  !selectedContractorId || paymentAmount <= 0 ? (
+                  /* FIFO mode: preview */
+                  !selectedPersonId || paymentAmount <= 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
                       <p className="text-muted-foreground">
-                        Select a contractor and enter an amount to see the allocation preview
+                        Select a {personLabel.toLowerCase()} and enter an amount to see the allocation preview
                       </p>
                     </div>
                   ) : previewLoading ? (
@@ -765,7 +859,7 @@ export function PaymentForm() {
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <CheckCircle className="h-12 w-12 text-cta mb-4" />
                       <p className="text-muted-foreground">
-                        No unpaid earnings for this contractor
+                        No unpaid earnings for this {personLabel.toLowerCase()}
                       </p>
                     </div>
                   )
@@ -780,7 +874,7 @@ export function PaymentForm() {
               type="button"
               variant="outline"
               onClick={() => router.push(isManualMode ? '/earnings/unpaid' : '/payments')}
-              disabled={createPayment.isPending}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -788,13 +882,13 @@ export function PaymentForm() {
               type="submit"
               className="bg-cta hover:bg-cta/90"
               disabled={
-                createPayment.isPending ||
+                isSubmitting ||
                 (isManualMode
                   ? !selectedEarnings || selectedEarnings.length === 0
-                  : !selectedContractorId || paymentAmount <= 0)
+                  : !selectedPersonId || paymentAmount <= 0)
               }
             >
-              {createPayment.isPending ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Recording...

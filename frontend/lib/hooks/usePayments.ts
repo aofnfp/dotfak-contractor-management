@@ -129,6 +129,14 @@ export function useCreateManagerPayment() {
   })
 }
 
+export function useManagerAllocationPreview(managerId: string, amount: number) {
+  return useQuery({
+    queryKey: ['manager-payments', 'preview', managerId, amount],
+    queryFn: () => managerPaymentsApi.previewAllocation(managerId, amount),
+    enabled: !!managerId && amount > 0,
+  })
+}
+
 export function useDeleteManagerPayment() {
   const queryClient = useQueryClient()
 

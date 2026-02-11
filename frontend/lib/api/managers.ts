@@ -90,4 +90,9 @@ export const managerEarningsApi = {
     })
     return response.data
   },
+
+  getByIds: async (ids: string[]): Promise<ManagerEarning[]> => {
+    const results = await Promise.all(ids.map((id) => managerEarningsApi.getById(id)))
+    return results
+  },
 }

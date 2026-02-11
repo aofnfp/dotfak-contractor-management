@@ -30,11 +30,13 @@ function UnpaidEarningsUI({
   isLoading,
   error,
   filterSlot,
+  paymentType = 'contractor',
 }: {
   earnings: EarningWithDetails[] | undefined
   isLoading: boolean
   error: unknown
   filterSlot?: React.ReactNode
+  paymentType?: 'contractor' | 'manager'
 }) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -64,7 +66,8 @@ function UnpaidEarningsUI({
 
   const handlePaySelected = () => {
     const ids = Array.from(selectedIds).join(',')
-    router.push(`/payments/new?earning_ids=${ids}`)
+    const typeParam = paymentType === 'manager' ? '&type=manager' : ''
+    router.push(`/payments/new?earning_ids=${ids}${typeParam}`)
   }
 
   return (
@@ -77,7 +80,7 @@ function UnpaidEarningsUI({
             Select earnings and record payments against them
           </p>
         </div>
-        <Link href="/payments/new">
+        <Link href={`/payments/new${paymentType === 'manager' ? '?type=manager' : ''}`}>
           <Button className="bg-cta hover:bg-cta/90">
             <DollarSign className="h-4 w-4 mr-2" />
             Record Payment
@@ -327,6 +330,7 @@ function ManagerUnpaidPage() {
       earnings={earnings}
       isLoading={isLoading}
       error={error}
+      paymentType="manager"
     />
   )
 }

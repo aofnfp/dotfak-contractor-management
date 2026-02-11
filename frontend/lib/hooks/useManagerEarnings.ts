@@ -34,3 +34,11 @@ export function useUnpaidManagerEarnings() {
     queryFn: () => managerEarningsApi.getUnpaid(),
   })
 }
+
+export function useManagerEarningsByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ['manager-earnings', 'byIds', ...ids],
+    queryFn: () => managerEarningsApi.getByIds(ids),
+    enabled: ids.length > 0,
+  })
+}

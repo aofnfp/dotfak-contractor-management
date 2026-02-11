@@ -90,6 +90,7 @@ export interface CreateManagerPaymentRequest {
   payment_date: string
   transaction_reference?: string
   notes?: string
+  allocate_to_earnings?: { earning_id: string; amount: number }[]
 }
 
 export const managerPaymentsApi = {
@@ -107,5 +108,15 @@ export const managerPaymentsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/payments/manager/${id}`)
+  },
+
+  previewAllocation: async (
+    managerId: string,
+    amount: number
+  ): Promise<AllocationPreviewItem[]> => {
+    const response = await apiClient.get('/payments/manager/preview-allocation', {
+      params: { manager_id: managerId, amount },
+    })
+    return response.data
   },
 }

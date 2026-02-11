@@ -11,6 +11,8 @@ import { ArrowLeft, Info, CheckCircle2 } from 'lucide-react'
 function NewPaymentContent() {
   const searchParams = useSearchParams()
   const isManualMode = !!searchParams.get('earning_ids')
+  const isManagerMode = searchParams.get('type') === 'manager'
+  const personLabel = isManagerMode ? 'manager' : 'contractor'
 
   return (
     <div className="space-y-8">
@@ -25,11 +27,13 @@ function NewPaymentContent() {
               </Button>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Record Payment</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {isManagerMode ? 'Record Manager Payment' : 'Record Payment'}
+          </h1>
           <p className="text-muted-foreground mt-2">
             {isManualMode
               ? 'Review and confirm payment for selected earnings'
-              : 'Record a payment to a contractor with automatic allocation'}
+              : `Record a payment to a ${personLabel} with automatic allocation`}
           </p>
         </div>
       </div>
@@ -43,8 +47,8 @@ function NewPaymentContent() {
               <div className="space-y-2">
                 <h3 className="font-semibold text-foreground">Selected Earnings</h3>
                 <p className="text-sm text-muted-foreground">
-                  You selected specific earnings to pay from the unpaid list. The contractor
-                  and amount are pre-filled. Review the details and confirm.
+                  You selected specific earnings to pay from the unpaid list. The {personLabel}
+                  {' '}and amount are pre-filled. Review the details and confirm.
                 </p>
                 <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mt-2">
                   <li>Choose a payment method and date</li>
@@ -69,7 +73,7 @@ function NewPaymentContent() {
                 </p>
                 <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mt-2">
                   <li>
-                    Select a contractor and enter the payment amount to see the allocation
+                    Select a {personLabel} and enter the payment amount to see the allocation
                     preview
                   </li>
                   <li>
