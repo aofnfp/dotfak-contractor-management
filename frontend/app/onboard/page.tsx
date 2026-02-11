@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { useVerifyToken } from '@/lib/hooks/useOnboarding'
@@ -18,15 +18,63 @@ const STEPS: { key: WizardStep; label: string }[] = [
   { key: 'done', label: 'Complete' },
 ]
 
+// Persist wizard state in sessionStorage so accidental back-navigation doesn't lose progress
+function getStorageKey(token: string) {
+  return `onboard-wizard-${token}`
+}
+
+function loadWizardState(token: string): { step: WizardStep; contractorId: string; contractId: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(getStorageKey(token))
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function saveWizardState(token: string, state: { step: WizardStep; contractorId: string; contractId: string }) {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(getStorageKey(token), JSON.stringify(state))
+  } catch {}
+}
+
 function OnboardWizard() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token') || ''
 
   const { data: tokenData, isLoading } = useVerifyToken(token)
 
-  const [step, setStep] = useState<WizardStep>('password')
-  const [contractorId, setContractorId] = useState<string>('')
-  const [contractId, setContractId] = useState<string>('')
+  // Restore state from sessionStorage if available (survives back-button)
+  const saved = loadWizardState(token)
+  const [step, setStep] = useState<WizardStep>(saved?.step || 'password')
+  const [contractorId, setContractorId] = useState<string>(saved?.contractorId || '')
+  const [contractId, setContractId] = useState<string>(saved?.contractId || '')
+
+  // Save state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (token) {
+      saveWizardState(token, { step, contractorId, contractId })
+    }
+  }, [token, step, contractorId, contractId])
+
+  // Block browser back-button / mouse side buttons during onboarding
+  useEffect(() => {
+    if (!token || step === 'done') return
+
+    // Push a dummy history entry so back-button hits our handler instead of leaving
+    window.history.pushState({ onboarding: true }, '')
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Re-push state to prevent actually navigating away
+      window.history.pushState({ onboarding: true }, '')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [token, step])
 
   if (!token) {
     return (
@@ -48,7 +96,10 @@ function OnboardWizard() {
     )
   }
 
-  if (!tokenData?.valid) {
+  // Only show invalid-token error if we have NO saved progress.
+  // After account setup, the token status changes to "accepted" and verify-token returns valid=false,
+  // but we should still allow the wizard to continue from saved state.
+  if (!tokenData?.valid && step === 'password') {
     return (
       <Card className="border-secondary">
         <CardContent className="py-12 text-center text-destructive">
