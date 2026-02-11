@@ -1,7 +1,8 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +19,7 @@ import { useManagerAssignments } from '@/lib/hooks/useManagerAssignments'
 import { useManagerEarnings } from '@/lib/hooks/useManagerEarnings'
 import { useDevices } from '@/lib/hooks/useDevices'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { AddManagerAssignmentDialog } from '@/components/managers/AddManagerAssignmentDialog'
 
 const onboardingLabels: Record<string, string> = {
   not_invited: 'Not Invited',
@@ -44,6 +46,7 @@ export default function ManagerDetailPage() {
   const { data: devices, isLoading: devicesLoading } = useDevices()
   const deleteManager = useDeleteManager()
   const inviteManager = useInviteManager()
+  const [showAssignDialog, setShowAssignDialog] = useState(false)
 
   // Filter devices to those belonging to this manager's assignments
   const managerDevices = devices?.filter(d => {
@@ -245,9 +248,19 @@ export default function ManagerDetailPage() {
 
       {/* Staff Assignments */}
       <Card className="border-secondary">
-        <CardHeader>
-          <CardTitle>Staff Assignments</CardTitle>
-          <CardDescription>Contractors managed by this manager</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Staff Assignments</CardTitle>
+            <CardDescription>Contractors managed by this manager</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowAssignDialog(true)}
+            className="bg-cta hover:bg-cta/90 text-white"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Assign Staff
+          </Button>
         </CardHeader>
         <CardContent>
           {assignmentsLoading ? (
@@ -431,6 +444,15 @@ export default function ManagerDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {showAssignDialog && (
+        <AddManagerAssignmentDialog
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+          managerId={managerId}
+          existingAssignmentIds={assignments?.map(a => a.contractor_assignment_id) || []}
+        />
+      )}
     </div>
   )
 }
