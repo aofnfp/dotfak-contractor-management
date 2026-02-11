@@ -21,7 +21,7 @@ import { useClients } from '@/lib/hooks/useClients'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
-import { AlertCircle, DollarSign, Users, CheckCircle2, X } from 'lucide-react'
+import { AlertCircle, DollarSign, Users, CheckCircle2, X, CreditCard } from 'lucide-react'
 import type { EarningWithDetails } from '@/lib/types/earning'
 
 // Shared unpaid earnings UI
@@ -31,12 +31,16 @@ function UnpaidEarningsUI({
   error,
   filterSlot,
   paymentType = 'contractor',
+  canPay = true,
+  headerSlot,
 }: {
   earnings: EarningWithDetails[] | undefined
   isLoading: boolean
   error: unknown
   filterSlot?: React.ReactNode
   paymentType?: 'contractor' | 'manager'
+  canPay?: boolean
+  headerSlot?: React.ReactNode
 }) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -73,20 +77,26 @@ function UnpaidEarningsUI({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Unpaid Earnings</h1>
-          <p className="text-muted-foreground mt-2">
-            Select earnings and record payments against them
-          </p>
+      {headerSlot || (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Unpaid Earnings</h1>
+            <p className="text-muted-foreground mt-2">
+              {canPay
+                ? 'Select earnings and record payments against them'
+                : 'View your pending earnings'}
+            </p>
+          </div>
+          {canPay && (
+            <Link href={`/payments/new${paymentType === 'manager' ? '?type=manager' : ''}`}>
+              <Button className="bg-cta hover:bg-cta/90">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Record Payment
+              </Button>
+            </Link>
+          )}
         </div>
-        <Link href={`/payments/new${paymentType === 'manager' ? '?type=manager' : ''}`}>
-          <Button className="bg-cta hover:bg-cta/90">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Record Payment
-          </Button>
-        </Link>
-      </div>
+      )}
 
       {/* Summary Stats */}
       {isLoading ? (
@@ -150,21 +160,38 @@ function UnpaidEarningsUI({
       {filterSlot}
 
       {/* Info Box */}
-      <Card className="border-muted bg-secondary/20">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-foreground">Select & Pay</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Use the checkboxes to select specific earnings you want to pay, then click
-                &ldquo;Pay Selected&rdquo; in the bar below. All selected earnings must belong
-                to the same person.
-              </p>
+      {canPay ? (
+        <Card className="border-muted bg-secondary/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Select & Pay</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Use the checkboxes to select specific earnings you want to pay, then click
+                  &ldquo;Pay Selected&rdquo; in the bar below. All selected earnings must belong
+                  to the same person.
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-muted bg-secondary/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Pending Earnings</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  These are your unpaid earnings. Payments are recorded by your admin.
+                  Contact them if you believe a payment is missing.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Earnings Table */}
       {isLoading ? (
@@ -178,12 +205,12 @@ function UnpaidEarningsUI({
           </CardContent>
         </Card>
       ) : earnings && earnings.length > 0 ? (
-        <div className={selectedIds.size > 0 ? 'pb-20' : ''}>
+        <div className={canPay && selectedIds.size > 0 ? 'pb-20' : ''}>
           <EarningsTable
             earnings={earnings}
-            selectable
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
+            selectable={canPay}
+            selectedIds={canPay ? selectedIds : undefined}
+            onSelectionChange={canPay ? setSelectedIds : undefined}
           />
         </div>
       ) : (
@@ -200,8 +227,8 @@ function UnpaidEarningsUI({
         </Card>
       )}
 
-      {/* Sticky Action Bar */}
-      {selectedIds.size > 0 && (
+      {/* Sticky Action Bar — only when canPay */}
+      {canPay && selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-50">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -247,7 +274,7 @@ function UnpaidEarningsUI({
 }
 
 // Admin: contractor unpaid earnings with filters
-function AdminUnpaidPage() {
+function AdminContractorUnpaidTab() {
   const { data: earnings, isLoading, error } = useUnpaidEarnings()
   const { data: contractors } = useContractors()
   const { data: clients } = useClients()
@@ -312,11 +339,92 @@ function AdminUnpaidPage() {
       isLoading={isLoading}
       error={error}
       filterSlot={filterSlot}
+      headerSlot={<></>}
     />
   )
 }
 
-// Manager: own unpaid earnings, no filters needed
+// Admin: manager unpaid earnings
+function AdminManagerUnpaidTab() {
+  const { data: rawEarnings, isLoading, error } = useUnpaidManagerEarnings()
+
+  const earnings = useMemo(
+    () => rawEarnings ? normalizeManagerEarnings(rawEarnings) : undefined,
+    [rawEarnings]
+  )
+
+  return (
+    <UnpaidEarningsUI
+      earnings={earnings}
+      isLoading={isLoading}
+      error={error}
+      paymentType="manager"
+      headerSlot={<></>}
+    />
+  )
+}
+
+// Admin: tabbed view with contractor + manager unpaid earnings
+function AdminUnpaidPage() {
+  const [activeTab, setActiveTab] = useState<'contractor' | 'manager'>('contractor')
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Unpaid Earnings</h1>
+          <p className="text-muted-foreground mt-2">
+            Select earnings and record payments against them
+          </p>
+        </div>
+        <Link href={`/payments/new${activeTab === 'manager' ? '?type=manager' : ''}`}>
+          <Button className="bg-cta hover:bg-cta/90">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Record Payment
+          </Button>
+        </Link>
+      </div>
+
+      {/* Tab Toggle */}
+      <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('contractor')}
+          className={`px-5 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'contractor'
+              ? 'bg-cta text-white'
+              : 'bg-background text-muted-foreground hover:bg-secondary'
+          }`}
+        >
+          <CreditCard className="h-4 w-4" />
+          Contractor Earnings
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('manager')}
+          className={`px-5 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'manager'
+              ? 'bg-cta text-white'
+              : 'bg-background text-muted-foreground hover:bg-secondary'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          Manager Earnings
+        </button>
+      </div>
+
+      {/* Tab Content — each tab provides its own header via headerSlot=<></> to suppress default */}
+      {activeTab === 'contractor' ? (
+        <AdminContractorUnpaidTab />
+      ) : (
+        <AdminManagerUnpaidTab />
+      )}
+    </div>
+  )
+}
+
+// Manager: own unpaid earnings, read-only (no payment actions)
 function ManagerUnpaidPage() {
   const { data: rawEarnings, isLoading, error } = useUnpaidManagerEarnings()
 
@@ -331,6 +439,7 @@ function ManagerUnpaidPage() {
       isLoading={isLoading}
       error={error}
       paymentType="manager"
+      canPay={false}
     />
   )
 }
