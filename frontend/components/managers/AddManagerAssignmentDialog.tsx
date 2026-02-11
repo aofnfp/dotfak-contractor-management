@@ -53,6 +53,28 @@ export function AddManagerAssignmentDialog({
     (a) => a.is_active && !existingAssignmentIds.includes(a.id)
   ) || []
 
+  const selectedAssignment = availableAssignments.find(
+    (a) => a.id === formData.contractor_assignment_id
+  )
+
+  const handleBackfillChange = (value: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    if (value === 'true' && selectedAssignment?.start_date) {
+      setFormData({ ...formData, backfill: value, start_date: selectedAssignment.start_date })
+    } else {
+      setFormData({ ...formData, backfill: value, start_date: today })
+    }
+  }
+
+  const handleAssignmentChange = (value: string) => {
+    const assignment = availableAssignments.find((a) => a.id === value)
+    if (formData.backfill === 'true' && assignment?.start_date) {
+      setFormData({ ...formData, contractor_assignment_id: value, start_date: assignment.start_date })
+    } else {
+      setFormData({ ...formData, contractor_assignment_id: value })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -106,9 +128,7 @@ export function AddManagerAssignmentDialog({
               ) : (
                 <Select
                   value={formData.contractor_assignment_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, contractor_assignment_id: value })
-                  }
+                  onValueChange={handleAssignmentChange}
                 >
                   <SelectTrigger className="bg-background border-border">
                     <SelectValue placeholder="Select a contractor assignment" />
@@ -165,9 +185,7 @@ export function AddManagerAssignmentDialog({
               <Label>Earnings Calculation</Label>
               <RadioGroup
                 value={formData.backfill}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, backfill: value })
-                }
+                onValueChange={handleBackfillChange}
                 className="flex flex-col gap-2"
               >
                 <div className="flex items-center space-x-2">
