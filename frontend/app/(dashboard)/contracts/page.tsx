@@ -163,6 +163,7 @@ export default function ContractsPage() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Contractor</TableHead>
                     <TableHead>Client</TableHead>
+                    <TableHead>Job Title</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Version</TableHead>
                     <TableHead>Status</TableHead>
@@ -178,6 +179,11 @@ export default function ContractsPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {contract.client_name || '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contract.contract_data?.job_title && contract.contract_data.job_title !== 'the assigned role'
+                          ? contract.contract_data.job_title
+                          : '—'}
                       </TableCell>
                       <TableCell className="text-muted-foreground capitalize">
                         {contract.contract_type}

@@ -126,6 +126,12 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
               <p className="text-sm text-muted-foreground">Code</p>
               <p className="font-mono text-sm">{assignment.contractor_code}</p>
             </div>
+            {assignment.job_title && (
+              <div>
+                <p className="text-sm text-muted-foreground">Job Title</p>
+                <p className="font-medium">{assignment.job_title}</p>
+              </div>
+            )}
             <div>
               <Button
                 variant="outline"

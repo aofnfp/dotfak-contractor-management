@@ -78,6 +78,7 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
           <TableRow className="bg-secondary/50 hover:bg-secondary/70">
             <TableHead className="font-heading">Contractor</TableHead>
             <TableHead className="font-heading">Client</TableHead>
+            <TableHead className="font-heading">Job Title</TableHead>
             <TableHead className="font-heading">Rate Type</TableHead>
             <TableHead className="font-heading">Rate</TableHead>
             <TableHead className="font-heading">Bonus Split</TableHead>
@@ -107,6 +108,9 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
                     {assignment.client_code}
                   </p>
                 </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {assignment.job_title || '—'}
               </TableCell>
               <TableCell>
                 <Badge variant="outline">

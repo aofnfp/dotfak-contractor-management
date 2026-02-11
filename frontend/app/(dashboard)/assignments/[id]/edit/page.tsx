@@ -41,6 +41,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
     contractor_id: '',
     client_company_id: '',
     client_employee_id: '',
+    job_title: '',
     rate_type: 'fixed' as 'fixed' | 'percentage',
     fixed_hourly_rate: '',
     percentage_rate: '',
@@ -58,6 +59,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
         contractor_id: assignment.contractor_id,
         client_company_id: assignment.client_company_id,
         client_employee_id: assignment.client_employee_id || '',
+        job_title: assignment.job_title || '',
         rate_type: assignment.rate_type,
         fixed_hourly_rate: assignment.fixed_hourly_rate?.toString() || '',
         percentage_rate: assignment.percentage_rate?.toString() || '',
@@ -78,6 +80,7 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
         id: id,
         data: {
           client_employee_id: formData.client_employee_id || undefined,
+          job_title: formData.job_title || undefined,
           rate_type: formData.rate_type,
           fixed_hourly_rate: formData.rate_type === 'fixed' ? parseFloat(formData.fixed_hourly_rate) : undefined,
           percentage_rate: formData.rate_type === 'percentage' ? parseFloat(formData.percentage_rate) : undefined,
@@ -217,6 +220,21 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
               />
               <p className="text-xs text-muted-foreground">
                 Optional: Used for automatic paystub matching
+              </p>
+            </div>
+
+            {/* Job Title */}
+            <div className="grid gap-2">
+              <Label htmlFor="job_title">Job Title</Label>
+              <Input
+                id="job_title"
+                placeholder="e.g., Customer Service Representative"
+                value={formData.job_title}
+                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                className="bg-background border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                Contractor's role at the client company (appears in contract)
               </p>
             </div>
 

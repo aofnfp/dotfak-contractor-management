@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 # Material fields that trigger an amendment when changed
-MATERIAL_FIELDS = {"rate_type", "fixed_hourly_rate", "percentage_rate", "bonus_split_percentage"}
+MATERIAL_FIELDS = {"rate_type", "fixed_hourly_rate", "percentage_rate", "bonus_split_percentage", "job_title"}
 
 
 class ContractService:
@@ -67,6 +67,9 @@ class ContractService:
             "percentage_rate": assignment.get("percentage_rate"),
             "bonus_split_percentage": float(assignment.get("bonus_split_percentage", 50)),
             "company_bonus_percentage": 100 - float(assignment.get("bonus_split_percentage", 50)),
+
+            # Role
+            "job_title": assignment.get("job_title") or "the assigned role",
 
             # Jurisdiction
             "jurisdiction_law": jurisdiction_law,
@@ -192,6 +195,7 @@ class ContractService:
             "manager_address": manager.get("address") or "Address on file",
             "contractor_name": f"{contractor_info.get('first_name', '')} {contractor_info.get('last_name', '')}",
             "client_company_name": client_info.get("name", "Client Company"),
+            "job_title": ca.get("job_title") or "the assigned role",
             "flat_hourly_rate": float(ma["flat_hourly_rate"]),
             "start_date": str(ma.get("start_date", "")),
             "jurisdiction_law": "the laws of the Federal Republic of Nigeria",

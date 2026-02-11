@@ -41,6 +41,7 @@ export interface ContractListItem {
   version: number
   status: ContractStatus
   pdf_url: string | null
+  contract_data?: Record<string, any>
   created_at: string
   updated_at: string
   contractor_name?: string

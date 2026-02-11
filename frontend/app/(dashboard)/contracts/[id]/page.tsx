@@ -108,6 +108,11 @@ export default function ContractDetailPage() {
                   | {contract.client_name}
                 </span>
               )}
+              {contract.contract_data?.job_title && contract.contract_data.job_title !== 'the assigned role' && (
+                <span className="text-sm text-muted-foreground">
+                  | {contract.contract_data.job_title}
+                </span>
+              )}
             </div>
           </div>
         </div>

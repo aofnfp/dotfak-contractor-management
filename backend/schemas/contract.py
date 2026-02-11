@@ -47,6 +47,7 @@ class ContractListItem(BaseModel):
     version: int
     status: str
     pdf_url: Optional[str] = None
+    contract_data: Optional[dict] = None
     created_at: datetime
     contractor_name: Optional[str] = None
     contractor_code: Optional[str] = None

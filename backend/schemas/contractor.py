@@ -77,6 +77,7 @@ class AssignmentBase(BaseModel):
     contractor_id: UUID
     client_company_id: UUID
     client_employee_id: Optional[str] = Field(None, max_length=50, description="Employee ID on client's paystub for auto-matching")
+    job_title: Optional[str] = Field(None, max_length=100, description="Contractor's role/title at the client (e.g., Customer Service Representative)")
 
     # Rate structure (flexible: fixed OR percentage)
     rate_type: str = Field(..., description="Rate type: 'fixed' or 'percentage'")
@@ -97,6 +98,7 @@ class AssignmentCreate(AssignmentBase):
 class AssignmentUpdate(BaseModel):
     """Schema for updating an assignment."""
     client_employee_id: Optional[str] = Field(None, max_length=50)
+    job_title: Optional[str] = Field(None, max_length=100)
     rate_type: Optional[str] = Field(None, description="Rate type: 'fixed' or 'percentage'")
     fixed_hourly_rate: Optional[float] = Field(None, ge=0)
     percentage_rate: Optional[float] = Field(None, ge=0, le=100)

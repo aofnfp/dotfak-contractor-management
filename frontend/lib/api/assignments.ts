@@ -10,6 +10,7 @@ export interface Assignment {
   contractor_id: string
   client_company_id: string
   client_employee_id?: string
+  job_title?: string
   rate_type: 'fixed' | 'percentage'
   fixed_hourly_rate?: number
   percentage_rate?: number
@@ -33,6 +34,7 @@ export interface CreateAssignmentRequest {
   contractor_id: string
   client_company_id: string
   client_employee_id?: string
+  job_title?: string
   rate_type: 'fixed' | 'percentage'
   fixed_hourly_rate?: number
   percentage_rate?: number
