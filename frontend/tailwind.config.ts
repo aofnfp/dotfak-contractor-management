@@ -24,7 +24,7 @@ const config: Config = {
           foreground: '#A8B5CC', // Updated for WCAG AA compliance (4.5:1 contrast ratio)
         },
         popover: {
-          DEFAULT: '#1E293B',
+          DEFAULT: '#283548',
           foreground: '#F8FAFC',
         },
         card: {
