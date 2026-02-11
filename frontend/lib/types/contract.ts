@@ -12,8 +12,9 @@ export type SignatureMethod = 'draw' | 'type'
 
 export interface Contract {
   id: string
-  contractor_id: string
-  assignment_id: string
+  contractor_id?: string | null
+  manager_id?: string | null
+  assignment_id?: string | null
   contract_type: ContractType
   version: number
   parent_contract_id: string | null
@@ -26,14 +27,16 @@ export interface Contract {
   updated_at: string
   contractor_name?: string
   contractor_code?: string
+  manager_name?: string
   client_name?: string
   signatures?: ContractSignature[]
 }
 
 export interface ContractListItem {
   id: string
-  contractor_id: string
-  assignment_id: string
+  contractor_id?: string | null
+  manager_id?: string | null
+  assignment_id?: string | null
   contract_type: ContractType
   version: number
   status: ContractStatus
@@ -42,6 +45,7 @@ export interface ContractListItem {
   updated_at: string
   contractor_name?: string
   contractor_code?: string
+  manager_name?: string
   client_name?: string
 }
 

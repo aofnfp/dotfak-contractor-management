@@ -174,7 +174,7 @@ export default function ContractsPage() {
                   {paginated.map((contract) => (
                     <TableRow key={contract.id} className="border-border">
                       <TableCell className="font-medium">
-                        {contract.contractor_name || '—'}
+                        {contract.contractor_name || contract.manager_name || '—'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {contract.client_name || '—'}
