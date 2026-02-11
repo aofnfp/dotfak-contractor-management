@@ -83,4 +83,11 @@ export const managerEarningsApi = {
     const response = await apiClient.get('/manager-earnings/summary')
     return response.data
   },
+
+  getUnpaid: async (): Promise<ManagerEarning[]> => {
+    const response = await apiClient.get('/manager-earnings', {
+      params: { payment_status: 'unpaid' },
+    })
+    return response.data
+  },
 }

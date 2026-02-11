@@ -27,3 +27,10 @@ export function useManagerEarningsSummary(enabled = true) {
     enabled,
   })
 }
+
+export function useUnpaidManagerEarnings() {
+  return useQuery({
+    queryKey: ['manager-earnings', 'unpaid'],
+    queryFn: () => managerEarningsApi.getUnpaid(),
+  })
+}

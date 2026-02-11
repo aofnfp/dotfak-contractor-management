@@ -15,45 +15,43 @@ import {
 } from '@/components/ui/select'
 import { EarningsTable } from '@/components/earnings/EarningsTable'
 import { useUnpaidEarnings } from '@/lib/hooks/useEarnings'
+import { useUnpaidManagerEarnings } from '@/lib/hooks/useManagerEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
+import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
 import { AlertCircle, DollarSign, Users, CheckCircle2, X } from 'lucide-react'
+import type { EarningWithDetails } from '@/lib/types/earning'
 
-export default function UnpaidEarningsPage() {
+// Shared unpaid earnings UI
+function UnpaidEarningsUI({
+  earnings,
+  isLoading,
+  error,
+  filterSlot,
+}: {
+  earnings: EarningWithDetails[] | undefined
+  isLoading: boolean
+  error: unknown
+  filterSlot?: React.ReactNode
+}) {
   const router = useRouter()
-  const { data: earnings, isLoading, error } = useUnpaidEarnings()
-  const { data: contractors } = useContractors()
-  const { data: clients } = useClients()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [contractorFilter, setContractorFilter] = useState<string>('all')
-  const [clientFilter, setClientFilter] = useState<string>('all')
 
-  // Filter earnings by contractor and client
-  const filteredEarnings = useMemo(() => {
-    if (!earnings) return undefined
-    return earnings.filter(e => {
-      if (contractorFilter !== 'all' && e.contractor_id !== contractorFilter) return false
-      if (clientFilter !== 'all' && e.client_company_id !== clientFilter) return false
-      return true
-    })
-  }, [earnings, contractorFilter, clientFilter])
-
-  // Calculate stats from filtered earnings
-  const stats = filteredEarnings
+  const stats = earnings
     ? {
-        totalPending: filteredEarnings.reduce((sum, e) => sum + e.amount_pending, 0),
-        totalContractors: new Set(filteredEarnings.map((e) => e.contractor_assignment_id)).size,
-        count: filteredEarnings.length,
+        totalPending: earnings.reduce((sum, e) => sum + e.amount_pending, 0),
+        totalContractors: new Set(earnings.map((e) => e.contractor_assignment_id)).size,
+        count: earnings.length,
       }
     : { totalPending: 0, totalContractors: 0, count: 0 }
 
-  // Compute selection-derived state
   const selectionInfo = useMemo(() => {
-    if (!filteredEarnings || selectedIds.size === 0) {
+    if (!earnings || selectedIds.size === 0) {
       return { selectedEarnings: [], selectedPending: 0, uniqueContractors: new Set<string>(), isMixed: false }
     }
-    const selectedEarnings = filteredEarnings.filter(e => selectedIds.has(e.id))
+    const selectedEarnings = earnings.filter(e => selectedIds.has(e.id))
     const selectedPending = selectedEarnings.reduce((sum, e) => sum + e.amount_pending, 0)
     const uniqueContractors = new Set(selectedEarnings.map(e => e.contractor_id))
     return {
@@ -62,7 +60,7 @@ export default function UnpaidEarningsPage() {
       uniqueContractors,
       isMixed: uniqueContractors.size > 1,
     }
-  }, [filteredEarnings, selectedIds])
+  }, [earnings, selectedIds])
 
   const handlePaySelected = () => {
     const ids = Array.from(selectedIds).join(',')
@@ -112,15 +110,12 @@ export default function UnpaidEarningsPage() {
               <div className="text-2xl font-bold text-destructive">
                 {formatCurrency(stats.totalPending)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Across all contractors
-              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contractors Owed</CardTitle>
+              <CardTitle className="text-sm font-medium">Staff Owed</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -149,46 +144,7 @@ export default function UnpaidEarningsPage() {
       )}
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Contractor</Label>
-              <Select value={contractorFilter} onValueChange={(v) => { setContractorFilter(v); setSelectedIds(new Set()) }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All contractors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Contractors</SelectItem>
-                  {contractors?.map((contractor) => (
-                    <SelectItem key={contractor.id} value={contractor.id}>
-                      {contractor.contractor_code} - {contractor.first_name}{' '}
-                      {contractor.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Client Company</Label>
-              <Select value={clientFilter} onValueChange={(v) => { setClientFilter(v); setSelectedIds(new Set()) }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All clients" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Clients</SelectItem>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.code} - {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {filterSlot}
 
       {/* Info Box */}
       <Card className="border-muted bg-secondary/20">
@@ -200,7 +156,7 @@ export default function UnpaidEarningsPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Use the checkboxes to select specific earnings you want to pay, then click
                 &ldquo;Pay Selected&rdquo; in the bar below. All selected earnings must belong
-                to the same contractor.
+                to the same person.
               </p>
             </div>
           </div>
@@ -218,10 +174,10 @@ export default function UnpaidEarningsPage() {
             <p className="text-destructive">Error loading unpaid earnings</p>
           </CardContent>
         </Card>
-      ) : filteredEarnings && filteredEarnings.length > 0 ? (
+      ) : earnings && earnings.length > 0 ? (
         <div className={selectedIds.size > 0 ? 'pb-20' : ''}>
           <EarningsTable
-            earnings={filteredEarnings}
+            earnings={earnings}
             selectable
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
@@ -257,7 +213,7 @@ export default function UnpaidEarningsPage() {
                 <>
                   <span className="text-muted-foreground">|</span>
                   <span className="text-sm text-destructive font-medium">
-                    Select earnings from one contractor only
+                    Select earnings from one person only
                   </span>
                 </>
               )}
@@ -285,4 +241,103 @@ export default function UnpaidEarningsPage() {
       )}
     </div>
   )
+}
+
+// Admin: contractor unpaid earnings with filters
+function AdminUnpaidPage() {
+  const { data: earnings, isLoading, error } = useUnpaidEarnings()
+  const { data: contractors } = useContractors()
+  const { data: clients } = useClients()
+  const [contractorFilter, setContractorFilter] = useState<string>('all')
+  const [clientFilter, setClientFilter] = useState<string>('all')
+
+  const filteredEarnings = useMemo(() => {
+    if (!earnings) return undefined
+    return earnings.filter(e => {
+      if (contractorFilter !== 'all' && e.contractor_id !== contractorFilter) return false
+      if (clientFilter !== 'all' && e.client_company_id !== clientFilter) return false
+      return true
+    })
+  }, [earnings, contractorFilter, clientFilter])
+
+  const filterSlot = (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Contractor</Label>
+            <Select value={contractorFilter} onValueChange={setContractorFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All contractors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Contractors</SelectItem>
+                {contractors?.map((contractor) => (
+                  <SelectItem key={contractor.id} value={contractor.id}>
+                    {contractor.contractor_code} - {contractor.first_name}{' '}
+                    {contractor.last_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Client Company</Label>
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                {clients?.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.code} - {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  return (
+    <UnpaidEarningsUI
+      earnings={filteredEarnings}
+      isLoading={isLoading}
+      error={error}
+      filterSlot={filterSlot}
+    />
+  )
+}
+
+// Manager: own unpaid earnings, no filters needed
+function ManagerUnpaidPage() {
+  const { data: rawEarnings, isLoading, error } = useUnpaidManagerEarnings()
+
+  const earnings = useMemo(
+    () => rawEarnings ? normalizeManagerEarnings(rawEarnings) : undefined,
+    [rawEarnings]
+  )
+
+  return (
+    <UnpaidEarningsUI
+      earnings={earnings}
+      isLoading={isLoading}
+      error={error}
+    />
+  )
+}
+
+export default function UnpaidEarningsPage() {
+  const { user } = useAuth()
+  const isManager = user?.role === 'manager'
+
+  if (isManager) {
+    return <ManagerUnpaidPage />
+  }
+
+  return <AdminUnpaidPage />
 }
