@@ -11,7 +11,7 @@ from typing import List
 import logging
 
 from backend.config import supabase_admin_client
-from backend.dependencies import require_admin, verify_token, get_contractor_id
+from backend.dependencies import require_admin, verify_token, get_contractor_id, get_manager_id
 from backend.services.contract_service import ContractService
 from backend.services.email_service import email_service
 from backend.schemas.contract import (
@@ -208,6 +208,14 @@ async def sign_contract(
                 raise HTTPException(status_code=400, detail="Contract is not awaiting admin signature")
             signer_type = "admin"
             signer_id = user["user_id"]
+        elif role == "manager":
+            if contract["status"] != "pending_contractor":
+                raise HTTPException(status_code=400, detail="Contract is not awaiting your signature")
+            manager_id = get_manager_id(user["user_id"])
+            if contract.get("manager_id") != manager_id:
+                raise HTTPException(status_code=403, detail="This contract is not assigned to you")
+            signer_type = "contractor"
+            signer_id = manager_id
         else:
             if contract["status"] != "pending_contractor":
                 raise HTTPException(status_code=400, detail="Contract is not awaiting your signature")
@@ -232,59 +240,90 @@ async def sign_contract(
         }).execute()
 
         # Advance contract status
+        is_manager_contract = contract.get("manager_id") and not contract.get("contractor_id")
+
         if signer_type == "contractor":
             supabase_admin_client.table("contracts").update({
                 "status": "pending_admin"
             }).eq("id", contract_id).execute()
 
-            # Update onboarding status
-            from backend.services.onboarding_service import OnboardingService
-            OnboardingService.advance_onboarding_status(
-                contract["contractor_id"], "contract_signed"
-            )
-
-            # Notify admin
-            try:
-                contractor = supabase_admin_client.table("contractors").select(
-                    "first_name, last_name"
-                ).eq("id", contract["contractor_id"]).execute()
-                name = f"{contractor.data[0]['first_name']} {contractor.data[0]['last_name']}" if contractor.data else "Contractor"
-                await email_service.send_admin_signature_needed(
-                    admin_email=email_service.sender_email,
-                    contractor_name=name,
-                    dashboard_url="https://dotfak-contractor-management.netlify.app/contracts",
+            if is_manager_contract:
+                # Manager signed — notify admin
+                try:
+                    mgr = supabase_admin_client.table("managers").select(
+                        "first_name, last_name"
+                    ).eq("id", contract["manager_id"]).execute()
+                    name = f"{mgr.data[0]['first_name']} {mgr.data[0]['last_name']}" if mgr.data else "Manager"
+                    await email_service.send_admin_signature_needed(
+                        admin_email=email_service.sender_email,
+                        contractor_name=name,
+                        dashboard_url="https://dotfak-contractor-management.netlify.app/contracts",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send admin notification: {e}")
+            else:
+                # Contractor signed
+                from backend.services.onboarding_service import OnboardingService
+                OnboardingService.advance_onboarding_status(
+                    contract["contractor_id"], "contract_signed"
                 )
-            except Exception as e:
-                logger.warning(f"Failed to send admin notification: {e}")
+
+                try:
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name"
+                    ).eq("id", contract["contractor_id"]).execute()
+                    name = f"{contractor.data[0]['first_name']} {contractor.data[0]['last_name']}" if contractor.data else "Contractor"
+                    await email_service.send_admin_signature_needed(
+                        admin_email=email_service.sender_email,
+                        contractor_name=name,
+                        dashboard_url="https://dotfak-contractor-management.netlify.app/contracts",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send admin notification: {e}")
 
         elif signer_type == "admin":
             supabase_admin_client.table("contracts").update({
                 "status": "fully_executed"
             }).eq("id", contract_id).execute()
 
-            # Update onboarding status
-            from backend.services.onboarding_service import OnboardingService
-            OnboardingService.advance_onboarding_status(
-                contract["contractor_id"], "fully_onboarded"
-            )
-
             # Generate PDF
             pdf_url = ContractService.generate_pdf(contract_id)
 
-            # Notify contractor
-            try:
-                contractor = supabase_admin_client.table("contractors").select(
-                    "first_name, last_name, email"
-                ).eq("id", contract["contractor_id"]).execute()
-                if contractor.data and contractor.data[0].get("email"):
-                    c = contractor.data[0]
-                    await email_service.send_contract_executed(
-                        to_email=c["email"],
-                        contractor_name=f"{c['first_name']} {c['last_name']}",
-                        pdf_url=pdf_url or "https://dotfak-contractor-management.netlify.app/contracts",
-                    )
-            except Exception as e:
-                logger.warning(f"Failed to send execution notification: {e}")
+            if is_manager_contract:
+                # Notify manager
+                try:
+                    mgr = supabase_admin_client.table("managers").select(
+                        "first_name, last_name, email"
+                    ).eq("id", contract["manager_id"]).execute()
+                    if mgr.data and mgr.data[0].get("email"):
+                        m = mgr.data[0]
+                        await email_service.send_contract_executed(
+                            to_email=m["email"],
+                            contractor_name=f"{m['first_name']} {m['last_name']}",
+                            pdf_url=pdf_url or "https://dotfak-contractor-management.netlify.app/contracts",
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to send execution notification: {e}")
+            else:
+                # Update contractor onboarding status
+                from backend.services.onboarding_service import OnboardingService
+                OnboardingService.advance_onboarding_status(
+                    contract["contractor_id"], "fully_onboarded"
+                )
+
+                try:
+                    contractor = supabase_admin_client.table("contractors").select(
+                        "first_name, last_name, email"
+                    ).eq("id", contract["contractor_id"]).execute()
+                    if contractor.data and contractor.data[0].get("email"):
+                        c = contractor.data[0]
+                        await email_service.send_contract_executed(
+                            to_email=c["email"],
+                            contractor_name=f"{c['first_name']} {c['last_name']}",
+                            pdf_url=pdf_url or "https://dotfak-contractor-management.netlify.app/contracts",
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to send execution notification: {e}")
 
         return {"success": True, "message": f"Contract signed by {signer_type}"}
     except HTTPException:
