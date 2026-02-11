@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useAssignments } from '@/lib/hooks/useAssignments'
 import { useCreateManagerAssignment } from '@/lib/hooks/useManagerAssignments'
 
@@ -44,6 +45,7 @@ export function AddManagerAssignmentDialog({
     flat_hourly_rate: '',
     start_date: new Date().toISOString().split('T')[0],
     notes: '',
+    backfill: 'false',
   })
 
   // Filter out assignments already linked to this manager
@@ -63,6 +65,7 @@ export function AddManagerAssignmentDialog({
         flat_hourly_rate: parseFloat(formData.flat_hourly_rate),
         start_date: formData.start_date,
         notes: formData.notes || undefined,
+        backfill: formData.backfill === 'true',
       })
 
       setFormData({
@@ -70,6 +73,7 @@ export function AddManagerAssignmentDialog({
         flat_hourly_rate: '',
         start_date: new Date().toISOString().split('T')[0],
         notes: '',
+        backfill: 'false',
       })
       onOpenChange(false)
     } catch (error) {
@@ -155,6 +159,30 @@ export function AddManagerAssignmentDialog({
                   className="bg-background border-border"
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Earnings Calculation</Label>
+              <RadioGroup
+                value={formData.backfill}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, backfill: value })
+                }
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="false" id="backfill-no" />
+                  <Label htmlFor="backfill-no" className="font-normal cursor-pointer">
+                    From today (future paystubs only)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="true" id="backfill-yes" />
+                  <Label htmlFor="backfill-yes" className="font-normal cursor-pointer">
+                    From start date (backfill all historical paystubs)
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="grid gap-2">

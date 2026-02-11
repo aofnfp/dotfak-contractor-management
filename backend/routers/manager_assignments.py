@@ -13,6 +13,7 @@ from backend.schemas import (
     ManagerAssignmentUpdate,
     ManagerAssignmentResponse,
 )
+from backend.services.manager_earnings_service import calculate_manager_earnings
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,8 @@ async def create_manager_assignment(
     """Create a manager assignment (admin only)."""
     try:
         assignment_data = assignment.model_dump()
+        should_backfill = assignment_data.pop("backfill", False)
+
         # Convert date to string for JSON serialization
         assignment_data["start_date"] = str(assignment_data["start_date"])
         if assignment_data.get("end_date"):
@@ -119,8 +122,32 @@ async def create_manager_assignment(
                 detail="Failed to create manager assignment"
             )
 
-        logger.info(f"Manager assignment created: {result.data[0]['id']}")
-        return _enrich_assignment(result.data[0])
+        created = result.data[0]
+        logger.info(f"Manager assignment created: {created['id']}")
+
+        # Backfill: calculate manager earnings for all historical paystubs
+        if should_backfill:
+            contractor_assignment_id = created["contractor_assignment_id"]
+            start_date = created["start_date"]
+
+            query = supabase_admin_client.table("paystubs").select("id").eq(
+                "contractor_assignment_id", contractor_assignment_id
+            ).gte("pay_period_begin", start_date).order("pay_period_begin")
+
+            paystubs_result = query.execute()
+            backfill_count = 0
+
+            for ps in (paystubs_result.data or []):
+                earnings = calculate_manager_earnings(ps["id"])
+                if earnings:
+                    backfill_count += len(earnings)
+
+            logger.info(
+                f"Backfilled {backfill_count} manager earnings records for "
+                f"manager_assignment={created['id']}, paystubs={len(paystubs_result.data or [])}"
+            )
+
+        return _enrich_assignment(created)
 
     except HTTPException:
         raise

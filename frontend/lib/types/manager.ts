@@ -57,6 +57,7 @@ export interface CreateManagerAssignmentRequest {
   end_date?: string
   is_active?: boolean
   notes?: string
+  backfill?: boolean
 }
 
 export interface UpdateManagerAssignmentRequest {

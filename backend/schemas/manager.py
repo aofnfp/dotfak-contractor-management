@@ -73,6 +73,7 @@ class ManagerAssignmentCreate(ManagerAssignmentBase):
     end_date: Optional[date] = None
     is_active: bool = True
     notes: Optional[str] = None
+    backfill: bool = False
 
 
 class ManagerAssignmentUpdate(BaseModel):
