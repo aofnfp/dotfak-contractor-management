@@ -162,9 +162,9 @@ async def get_contract(
 
         enriched = _enrich_contract(contract)
 
-        # Fetch signatures
+        # Fetch signatures (including signature_data for display in contract view)
         sigs = supabase_admin_client.table("contract_signatures").select(
-            "id, signer_type, signer_name, signature_method, signed_at"
+            "id, signer_type, signer_name, signature_method, signed_at, signature_data"
         ).eq("contract_id", contract_id).execute()
 
         enriched["signatures"] = sigs.data or []

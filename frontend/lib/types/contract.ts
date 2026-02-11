@@ -51,6 +51,7 @@ export interface ContractSignature {
   signer_name: string
   signature_method: SignatureMethod
   signed_at: string
+  signature_data?: string
 }
 
 export interface SignContractRequest {

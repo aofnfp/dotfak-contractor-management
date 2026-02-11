@@ -67,9 +67,70 @@ export interface DashboardStats {
   monthly_trend: MonthlyTrend[]
 }
 
+export interface ContractorMonthlyTrend {
+  month: string
+  hours: number
+  earnings: number
+  regular: number
+  bonus: number
+  paid: number
+  pending: number
+}
+
+export interface ContractorDashboardStats {
+  contractor_name: string
+  contractor_code: string
+
+  // Assignment
+  assignments: {
+    client_name: string
+    client_code: string | null
+    hourly_rate: number
+    bonus_percentage: number
+  }[]
+
+  // Contract
+  contract: {
+    id: string
+    status: string
+    type: string
+    version: number
+  } | null
+
+  // Earnings
+  total_earnings: number
+  total_regular: number
+  total_bonus: number
+  total_hours: number
+  total_pay_periods: number
+
+  // Payment
+  total_paid: number
+  total_pending: number
+  payment_rate: number
+  count_paid: number
+  count_unpaid: number
+
+  // This month
+  this_month_earnings: number
+  this_month_hours: number
+
+  // Date range
+  earliest_period: string | null
+  latest_period: string | null
+
+  // Monthly trend
+  monthly_trend: ContractorMonthlyTrend[]
+}
+
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
     const response = await apiClient.get('/dashboard/stats')
+    return response.data
+  },
+
+  getContractorStats: async (): Promise<ContractorDashboardStats> => {
+    const response = await apiClient.get('/dashboard/contractor')
     return response.data
   },
 }

@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ContractViewer } from '@/components/contracts/ContractViewer'
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge'
 import { SignatureCapture } from '@/components/contracts/SignatureCapture'
-import { useContract, useSignContract, useContractPdf } from '@/lib/hooks/useContracts'
+import { useContract, useSignContract } from '@/lib/hooks/useContracts'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api/client'
 import type { SignatureMethod } from '@/lib/types/contract'
@@ -17,6 +18,7 @@ export default function ContractDetailPage() {
   const params = useParams()
   const router = useRouter()
   const contractId = params.id as string
+  const { user } = useAuth()
 
   const { data: contract, isLoading } = useContract(contractId)
   const signContract = useSignContract()
@@ -79,7 +81,9 @@ export default function ContractDetailPage() {
     )
   }
 
-  const canAdminSign = contract.status === 'pending_admin'
+  const isAdmin = user?.role === 'admin'
+  const canAdminSign = contract.status === 'pending_admin' && isAdmin
+  const canContractorSign = contract.status === 'pending_contractor' && !isAdmin
 
   return (
     <div className="flex-1 space-y-6 p-8">
@@ -124,6 +128,15 @@ export default function ContractDetailPage() {
               Counter-Sign
             </Button>
           )}
+          {canContractorSign && !showSignature && (
+            <Button
+              onClick={() => setShowSignature(true)}
+              className="bg-cta hover:bg-cta/90 text-white"
+            >
+              <FileSignature className="h-4 w-4 mr-2" />
+              Sign Contract
+            </Button>
+          )}
         </div>
       </div>
 
@@ -134,19 +147,27 @@ export default function ContractDetailPage() {
             <CardTitle className="text-lg">Signatures</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {contract.signatures.map((sig) => (
-                <div
-                  key={sig.id}
-                  className="flex items-center justify-between p-3 rounded-md bg-secondary"
-                >
-                  <div>
-                    <span className="font-medium capitalize">{sig.signer_type}</span>
-                    <span className="text-muted-foreground"> — {sig.signer_name}</span>
+                <div key={sig.id} className="p-3 rounded-md bg-secondary">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="font-medium capitalize">{sig.signer_type}</span>
+                      <span className="text-muted-foreground"> — {sig.signer_name}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(sig.signed_at).toLocaleString()}
+                    </span>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(sig.signed_at).toLocaleString()}
-                  </span>
+                  {sig.signature_data && (
+                    <div className="bg-white rounded p-2 inline-block border border-border">
+                      <img
+                        src={sig.signature_data}
+                        alt={`${sig.signer_name}'s signature`}
+                        className="max-h-16"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -154,11 +175,13 @@ export default function ContractDetailPage() {
         </Card>
       )}
 
-      {/* Admin signing */}
-      {showSignature && canAdminSign && (
+      {/* Signing section (admin counter-sign or contractor sign) */}
+      {showSignature && (canAdminSign || canContractorSign) && (
         <Card className="border-cta/30">
           <CardHeader>
-            <CardTitle className="text-lg">Admin Counter-Signature</CardTitle>
+            <CardTitle className="text-lg">
+              {canAdminSign ? 'Admin Counter-Signature' : 'Sign Contract'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <SignatureCapture onSignatureChange={setSignature} />
@@ -182,13 +205,13 @@ export default function ContractDetailPage() {
         </Card>
       )}
 
-      {/* Contract content */}
+      {/* Contract content with signatures injected */}
       <Card className="border-secondary">
         <CardHeader>
           <CardTitle className="text-lg">Contract Content</CardTitle>
         </CardHeader>
         <CardContent>
-          <ContractViewer htmlContent={contract.html_content} />
+          <ContractViewer htmlContent={contract.html_content} signatures={contract.signatures} />
         </CardContent>
       </Card>
     </div>

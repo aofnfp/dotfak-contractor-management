@@ -13,7 +13,8 @@ import type { NavSection } from '@/lib/types/navigation'
 /**
  * Navigation Configuration
  *
- * Defines all navigation items for the admin dashboard
+ * Items with `roles` are only visible to those roles.
+ * Items without `roles` are visible to everyone.
  */
 
 export const navigationConfig: NavSection[] = [
@@ -36,18 +37,21 @@ export const navigationConfig: NavSection[] = [
         href: '/contractors',
         icon: Users,
         description: 'Manage contractor profiles',
+        roles: ['admin'],
       },
       {
         title: 'Assignments',
         href: '/assignments',
         icon: Briefcase,
         description: 'Contractor-client assignments',
+        roles: ['admin'],
       },
       {
         title: 'Paystubs',
         href: '/paystubs',
         icon: FileText,
         description: 'Upload and view paystubs',
+        roles: ['admin'],
       },
     ],
   },
@@ -59,6 +63,7 @@ export const navigationConfig: NavSection[] = [
         href: '/onboarding',
         icon: UserCheck,
         description: 'Contractor invitations and setup',
+        roles: ['admin'],
       },
       {
         title: 'Contracts',

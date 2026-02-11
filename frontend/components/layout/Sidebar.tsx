@@ -4,17 +4,19 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigationConfig } from '@/lib/config/navigation'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { Code2 } from 'lucide-react'
 
 /**
  * Sidebar Component
  *
- * Main navigation sidebar for the dashboard
- * Shows company branding and all navigation items
+ * Main navigation sidebar for the dashboard.
+ * Filters navigation items based on user role.
  */
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { user } = useAuth()
 
   return (
     <div className="flex h-full w-64 flex-col bg-secondary border-r border-border">
@@ -34,13 +36,19 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {navigationConfig.map((section) => (
+          {navigationConfig.map((section) => {
+            const visibleItems = section.items.filter(
+              (item) => !item.roles || item.roles.includes(user?.role as 'admin' | 'contractor')
+            )
+            if (visibleItems.length === 0) return null
+
+            return (
             <div key={section.title}>
               <h3 className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {section.title}
               </h3>
               <div className="space-y-1">
-                {section.items.map((item) => {
+                {visibleItems.map((item) => {
                   const isActive = pathname === item.href
                   const Icon = item.icon
 
@@ -68,7 +76,8 @@ export function Sidebar() {
                 })}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </nav>
 
