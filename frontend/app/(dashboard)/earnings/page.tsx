@@ -93,7 +93,7 @@ function EarningsPageUI({
           <p className="text-muted-foreground mt-2">{headerDescription}</p>
         </div>
         <div className="flex gap-3">
-          {(isAdmin || isManager) && (
+          {isAdmin && (
             <Link href="/earnings/unpaid">
               <Button className="bg-cta hover:bg-cta/90 gap-2">
                 <CreditCard className="h-4 w-4" />
@@ -219,9 +219,15 @@ function EarningsPageUI({
   )
 }
 
-// Manager: calls manager API, normalizes to shared shape
+// Manager: calls manager API, normalizes to shared shape, with payment status filter
 function ManagerEarningsPage() {
-  const { data: rawEarnings, isLoading, error } = useManagerEarnings()
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | 'all'>('all')
+
+  const filters = {
+    payment_status: paymentStatus !== 'all' ? paymentStatus : undefined,
+  }
+
+  const { data: rawEarnings, isLoading, error } = useManagerEarnings(filters)
   const { data: rawSummary, isLoading: summaryLoading } = useManagerEarningsSummary()
 
   const earnings = useMemo(
@@ -231,6 +237,35 @@ function ManagerEarningsPage() {
   const summary = useMemo(
     () => rawSummary ? normalizeManagerSummary(rawSummary) : undefined,
     [rawSummary]
+  )
+
+  const filterSlot = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Filter Earnings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>Payment Status</Label>
+            <Select
+              value={paymentStatus}
+              onValueChange={(value) => setPaymentStatus(value as PaymentStatus | 'all')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+                <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 
   return (
@@ -243,6 +278,7 @@ function ManagerEarningsPage() {
       isAdmin={false}
       isManager={true}
       headerDescription="Your earnings from managed staff paystubs"
+      filterSlot={filterSlot}
     />
   )
 }

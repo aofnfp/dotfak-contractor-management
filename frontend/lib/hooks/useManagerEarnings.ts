@@ -5,10 +5,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { managerEarningsApi } from '@/lib/api/managers'
 
-export function useManagerEarnings(managerId?: string) {
+export function useManagerEarnings(filters?: { manager_id?: string; payment_status?: string }) {
   return useQuery({
-    queryKey: ['manager-earnings', managerId],
-    queryFn: () => managerEarningsApi.getAll(managerId),
+    queryKey: ['manager-earnings', filters],
+    queryFn: () => managerEarningsApi.getAll(filters),
   })
 }
 

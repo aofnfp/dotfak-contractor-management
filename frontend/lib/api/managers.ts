@@ -68,8 +68,10 @@ export const managerAssignmentsApi = {
 }
 
 export const managerEarningsApi = {
-  getAll: async (managerId?: string): Promise<ManagerEarning[]> => {
-    const params = managerId ? { manager_id: managerId } : {}
+  getAll: async (filters?: { manager_id?: string; payment_status?: string }): Promise<ManagerEarning[]> => {
+    const params: Record<string, string> = {}
+    if (filters?.manager_id) params.manager_id = filters.manager_id
+    if (filters?.payment_status) params.payment_status = filters.payment_status
     const response = await apiClient.get('/manager-earnings', { params })
     return response.data
   },

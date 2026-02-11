@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -424,32 +424,19 @@ function AdminUnpaidPage() {
   )
 }
 
-// Manager: own unpaid earnings, read-only (no payment actions)
-function ManagerUnpaidPage() {
-  const { data: rawEarnings, isLoading, error } = useUnpaidManagerEarnings()
-
-  const earnings = useMemo(
-    () => rawEarnings ? normalizeManagerEarnings(rawEarnings) : undefined,
-    [rawEarnings]
-  )
-
-  return (
-    <UnpaidEarningsUI
-      earnings={earnings}
-      isLoading={isLoading}
-      error={error}
-      paymentType="manager"
-      canPay={false}
-    />
-  )
-}
-
 export default function UnpaidEarningsPage() {
   const { user } = useAuth()
-  const isManager = user?.role === 'manager'
+  const router = useRouter()
+  const isAdmin = user?.role === 'admin'
 
-  if (isManager) {
-    return <ManagerUnpaidPage />
+  useEffect(() => {
+    if (user && !isAdmin) {
+      router.replace('/earnings')
+    }
+  }, [user, isAdmin, router])
+
+  if (!isAdmin) {
+    return null
   }
 
   return <AdminUnpaidPage />

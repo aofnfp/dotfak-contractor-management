@@ -42,7 +42,7 @@ export default function ManagerDetailPage() {
 
   const { data: manager, isLoading, error } = useManager(managerId)
   const { data: assignments, isLoading: assignmentsLoading } = useManagerAssignments(managerId)
-  const { data: earnings, isLoading: earningsLoading } = useManagerEarnings(managerId)
+  const { data: earnings, isLoading: earningsLoading } = useManagerEarnings({ manager_id: managerId })
   const { data: devices, isLoading: devicesLoading } = useDevices()
   const deleteManager = useDeleteManager()
   const inviteManager = useInviteManager()
