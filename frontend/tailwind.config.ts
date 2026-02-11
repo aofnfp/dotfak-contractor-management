@@ -23,6 +23,14 @@ const config: Config = {
           DEFAULT: '#1E293B',
           foreground: '#A8B5CC', // Updated for WCAG AA compliance (4.5:1 contrast ratio)
         },
+        popover: {
+          DEFAULT: '#1E293B',
+          foreground: '#F8FAFC',
+        },
+        card: {
+          DEFAULT: '#1E293B',
+          foreground: '#F8FAFC',
+        },
         accent: {
           DEFAULT: '#22C55E',
           foreground: '#F8FAFC',
