@@ -150,7 +150,7 @@ function OnboardWizard() {
       {step === 'password' && (
         <SetPasswordStep
           token={token}
-          firstName={tokenData.first_name || ''}
+          firstName={tokenData?.first_name || ''}
           onComplete={(id) => {
             setContractorId(id)
             setStep('profile')
@@ -160,7 +160,7 @@ function OnboardWizard() {
 
       {step === 'profile' && (
         <VerifyProfileStep
-          firstName={tokenData.first_name || ''}
+          firstName={tokenData?.first_name || ''}
           lastName={tokenData.last_name || ''}
           phone={tokenData.phone}
           address={tokenData.address}
