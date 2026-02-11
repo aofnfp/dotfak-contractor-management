@@ -119,6 +119,13 @@ async def list_contracts(
 
         if role == "admin":
             query = supabase_admin_client.table("contracts").select("*")
+        elif role == "manager":
+            manager_id = get_manager_id(user["user_id"])
+            if not manager_id:
+                return []
+            query = supabase_admin_client.table("contracts").select("*").eq(
+                "manager_id", manager_id
+            )
         else:
             contractor_id = get_contractor_id(user["user_id"])
             if not contractor_id:
@@ -154,8 +161,13 @@ async def get_contract(
 
         contract = result.data[0]
 
-        # Authorization check for contractors
-        if user.get("role") != "admin":
+        # Authorization check for non-admin
+        role = user.get("role")
+        if role == "manager":
+            manager_id = get_manager_id(user["user_id"])
+            if contract.get("manager_id") != manager_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        elif role != "admin":
             contractor_id = get_contractor_id(user["user_id"])
             if contract["contractor_id"] != contractor_id:
                 raise HTTPException(status_code=403, detail="Access denied")
