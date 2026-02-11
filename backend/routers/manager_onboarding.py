@@ -378,16 +378,17 @@ async def complete_manager_profile(
             except Exception as e:
                 logger.error(f"Failed to generate contract for manager assignment {ma['id']}: {e}")
 
-        # Update onboarding status
-        supabase_admin_client.table("managers").update({
-            "onboarding_status": "completed",
-        }).eq("id", manager_id).execute()
+        # Only mark completed if contracts were generated
+        if contract_ids:
+            supabase_admin_client.table("managers").update({
+                "onboarding_status": "completed",
+            }).eq("id", manager_id).execute()
 
         return ManagerCompleteProfileResponse(
             success=True,
             message=f"Profile completed. {len(contract_ids)} contract(s) generated.",
             contract_ids=contract_ids,
-            onboarding_status="completed",
+            onboarding_status="completed" if contract_ids else "in_progress",
         )
     except HTTPException:
         raise
