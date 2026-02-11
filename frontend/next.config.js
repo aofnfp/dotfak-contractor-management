@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Remove output: 'export' - it breaks server-side features
+  output: 'standalone',
 
   images: {
     remotePatterns: [
@@ -15,6 +15,17 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+  },
+
+  // Proxy /api/* to backend — replaces Netlify [[redirects]]
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/:path*`,
+      },
+    ]
   },
 }
 
