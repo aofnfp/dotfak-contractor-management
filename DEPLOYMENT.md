@@ -13,7 +13,7 @@
 │                                                               │
 │  Frontend (Next.js)          ──────►  Coolify VPS           │
 │  ├─ Admin Dashboard                   • Docker-based        │
-│  └─ Contractor Portal                 • https://dotfak.com  │
+│  └─ Contractor Portal                 • https://portal.dotfak.com  │
 │                                                               │
 │  Backend (FastAPI)           ──────►  Coolify VPS           │
 │  ├─ REST API                          • Docker-based        │
@@ -34,7 +34,7 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://dotfak.com |
+| Frontend | https://portal.dotfak.com |
 | Backend API | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io |
 | API Docs | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io/docs |
 | Database | https://supabase.com/dashboard/project/pcatbotfxeqrinydewen |
@@ -45,7 +45,7 @@
 
 **Deployment:** Docker-based via Coolify. Uses Next.js standalone output mode.
 
-**Domain:** `https://dotfak.com`
+**Domain:** `https://portal.dotfak.com`
 
 **API Proxy:** Next.js rewrites in `next.config.js` proxy `/api/*` to the backend.
 
@@ -74,7 +74,7 @@ ENV PYTHONUNBUFFERED=1
 **`.dockerignore`** excludes `__pycache__/`, `*.pyc`, `.git/`, `.env`, `frontend/`, etc.
 
 **Environment variables:** Set in Coolify dashboard (same as `.env`).
-- `FRONTEND_URL` must be set to `https://dotfak.com` (used for CORS and email links)
+- `FRONTEND_URL` must be set to `https://portal.dotfak.com` (used for CORS and email links)
 
 ---
 
@@ -116,5 +116,5 @@ git push origin main
 - Verify with `/debug/parser-version` endpoint
 
 ### CORS errors
-- Check `FRONTEND_URL` env var in Coolify matches `https://dotfak.com`
+- Check `FRONTEND_URL` env var in Coolify matches `https://portal.dotfak.com`
 - Backend `main.py` uses `FRONTEND_URL` from config for CORS origins

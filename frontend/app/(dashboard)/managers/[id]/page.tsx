@@ -19,6 +19,7 @@ import { useManagerAssignments } from '@/lib/hooks/useManagerAssignments'
 import { useManagerEarnings } from '@/lib/hooks/useManagerEarnings'
 import { useDevices } from '@/lib/hooks/useDevices'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { getCountryName } from '@/lib/constants/countries'
 import { AddManagerAssignmentDialog } from '@/components/managers/AddManagerAssignmentDialog'
 
 const onboardingLabels: Record<string, string> = {
@@ -219,7 +220,10 @@ export default function ManagerDetailPage() {
               <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm font-medium">Address</p>
-                <p className="text-sm text-muted-foreground">{manager.address || 'Not provided'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {[manager.address, manager.city, manager.state, manager.zip_code].filter(Boolean).join(', ') || 'Not provided'}
+                  {manager.country && ` — ${getCountryName(manager.country)}`}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">

@@ -211,6 +211,10 @@ async def verify_invitation_token(token: str):
             email=data["email"],
             phone=data.get("phone"),
             address=data.get("address"),
+            city=data.get("city"),
+            state=data.get("state"),
+            country=data.get("country"),
+            zip_code=data.get("zip_code"),
         )
     except Exception as e:
         logger.error(f"Token verification error: {e}")
@@ -258,8 +262,14 @@ async def update_profile(
             update_data["phone"] = data.phone
         if data.address is not None:
             update_data["address"] = data.address
+        if data.city is not None:
+            update_data["city"] = data.city
+        if data.state is not None:
+            update_data["state"] = data.state
         if data.country is not None:
             update_data["country"] = data.country
+        if data.zip_code is not None:
+            update_data["zip_code"] = data.zip_code
 
         if update_data:
             supabase_admin_client.table("contractors").update(
@@ -283,11 +293,28 @@ async def complete_profile(
     Mark profile as completed, register bank account, and generate contract.
 
     This is the final step of profile verification.
+    Requires: address, city, state, country.
     """
     try:
         contractor_id = get_contractor_id(user["user_id"])
         if not contractor_id:
             raise HTTPException(status_code=404, detail="Contractor profile not found")
+
+        # Validate required address fields for onboarding completion
+        missing = []
+        if not data.address:
+            missing.append("street address")
+        if not data.city:
+            missing.append("city")
+        if not data.state:
+            missing.append("state")
+        if not data.country:
+            missing.append("country")
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required fields: {', '.join(missing)}"
+            )
 
         # Apply any final profile updates
         update_data = {}
@@ -299,8 +326,14 @@ async def complete_profile(
             update_data["phone"] = data.phone
         if data.address is not None:
             update_data["address"] = data.address
+        if data.city is not None:
+            update_data["city"] = data.city
+        if data.state is not None:
+            update_data["state"] = data.state
         if data.country is not None:
             update_data["country"] = data.country
+        if data.zip_code is not None:
+            update_data["zip_code"] = data.zip_code
 
         if update_data:
             supabase_admin_client.table("contractors").update(

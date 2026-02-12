@@ -42,6 +42,10 @@ export interface VerifyTokenResponse {
   email?: string
   phone?: string | null
   address?: string | null
+  city?: string | null
+  state?: string | null
+  country?: string | null
+  zip_code?: string | null
 }
 
 export interface SetupAccountRequest {
@@ -62,7 +66,10 @@ export interface UpdateProfileRequest {
   last_name?: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
   country?: string
+  zip_code?: string
   bank_account_last4?: string
 }
 

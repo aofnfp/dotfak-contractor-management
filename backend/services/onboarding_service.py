@@ -64,7 +64,7 @@ class OnboardingService:
         Returns contractor info if valid, None otherwise.
         """
         result = supabase_admin_client.table("contractor_invitations").select(
-            "*, contractors(id, first_name, last_name, phone, address, email, onboarding_status, auth_user_id)"
+            "*, contractors(id, first_name, last_name, phone, address, city, state, country, zip_code, email, onboarding_status, auth_user_id)"
         ).eq("token", token).eq("status", "pending").execute()
 
         if not result.data:
@@ -90,6 +90,10 @@ class OnboardingService:
             "email": invitation["email"],
             "phone": contractor.get("phone"),
             "address": contractor.get("address"),
+            "city": contractor.get("city"),
+            "state": contractor.get("state"),
+            "country": contractor.get("country"),
+            "zip_code": contractor.get("zip_code"),
             "already_has_account": contractor.get("auth_user_id") is not None,
         }
 

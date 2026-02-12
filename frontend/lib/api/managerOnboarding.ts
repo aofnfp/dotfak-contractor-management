@@ -12,6 +12,10 @@ export interface ManagerTokenVerification {
   email?: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
 }
 
 export interface ManagerSetupAccountRequest {
@@ -32,6 +36,10 @@ export interface ManagerCompleteProfileRequest {
   last_name?: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
   bank_account_last4?: string
 }
 

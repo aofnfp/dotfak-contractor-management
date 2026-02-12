@@ -6,7 +6,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'dotfak.com',
+        hostname: 'portal.dotfak.com',
       },
     ],
   },

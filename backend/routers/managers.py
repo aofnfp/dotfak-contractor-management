@@ -33,6 +33,10 @@ async def create_manager(
             "email": manager.email,
             "phone": manager.phone,
             "address": manager.address,
+            "city": manager.city,
+            "state": manager.state,
+            "country": manager.country,
+            "zip_code": manager.zip_code,
             "notes": manager.notes,
             "is_active": manager.is_active,
         }

@@ -53,7 +53,14 @@ class ContractService:
 
             # Contractor
             "contractor_name": f"{contractor['first_name']} {contractor['last_name']}",
-            "contractor_address": contractor.get("address") or "Address on file",
+            "contractor_address": ", ".join(
+                p for p in [
+                    contractor.get("address"),
+                    contractor.get("city"),
+                    contractor.get("state"),
+                    contractor.get("zip_code"),
+                ] if p
+            ) or "Address on file",
             "contractor_country": country,
             "contractor_country_name": "United States of America" if country == "US" else "Nigeria",
 
@@ -192,14 +199,23 @@ class ContractService:
             "company_representative": "Abraham Oladotun",
             "company_title": "Managing Director",
             "manager_name": f"{manager['first_name']} {manager['last_name']}",
-            "manager_address": manager.get("address") or "Address on file",
+            "manager_address": ", ".join(
+                p for p in [
+                    manager.get("address"),
+                    manager.get("city"),
+                    manager.get("state"),
+                    manager.get("zip_code"),
+                ] if p
+            ) or "Address on file",
+            "manager_country": manager.get("country", "NG"),
+            "manager_country_name": "United States of America" if manager.get("country") == "US" else "Nigeria",
             "contractor_name": f"{contractor_info.get('first_name', '')} {contractor_info.get('last_name', '')}",
             "client_company_name": client_info.get("name", "Client Company"),
             "job_title": ca.get("job_title") or "the assigned role",
             "flat_hourly_rate": float(ma["flat_hourly_rate"]),
             "start_date": str(ma.get("start_date", "")),
-            "jurisdiction_law": "the laws of the Federal Republic of Nigeria",
-            "jurisdiction_venue": "arbitration in Lagos, Nigeria, in accordance with the Arbitration and Conciliation Act",
+            "jurisdiction_law": "the laws of the Federal Republic of Nigeria" if manager.get("country", "NG") != "US" else "the laws of the State of Texas, United States of America",
+            "jurisdiction_venue": "arbitration in Lagos, Nigeria, in accordance with the Arbitration and Conciliation Act" if manager.get("country", "NG") != "US" else "the courts located in the State of Texas, USA",
             "contract_date": datetime.utcnow().strftime("%B %d, %Y"),
             "contract_year": datetime.utcnow().strftime("%Y"),
         }

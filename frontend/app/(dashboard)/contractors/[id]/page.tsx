@@ -16,6 +16,7 @@ import {
 import { useContractor, useDeleteContractor } from '@/lib/hooks/useContractors'
 import { useContractorAssignments } from '@/lib/hooks/useAssignments'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { getCountryName } from '@/lib/constants/countries'
 
 export default function ContractorDetailPage() {
   const params = useParams()
@@ -132,7 +133,15 @@ export default function ContractorDetailPage() {
               <div>
                 <p className="text-sm font-medium">Address</p>
                 <p className="text-sm text-muted-foreground">
-                  {contractor.address || 'Not provided'}
+                  {(() => {
+                    const parts = [
+                      contractor.address,
+                      contractor.city,
+                      [contractor.state, contractor.zip_code].filter(Boolean).join(' '),
+                      contractor.country ? getCountryName(contractor.country) : null,
+                    ].filter(Boolean)
+                    return parts.length > 0 ? parts.join(', ') : 'Not provided'
+                  })()}
                 </p>
               </div>
             </div>

@@ -11,6 +11,10 @@ export interface Manager {
   email: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
   auth_user_id?: string
   onboarding_status: 'not_invited' | 'invited' | 'in_progress' | 'completed'
   is_active: boolean
@@ -26,6 +30,10 @@ export interface CreateManagerRequest {
   email: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
   notes?: string
   is_active?: boolean
 }

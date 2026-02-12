@@ -15,6 +15,10 @@ class ManagerBase(BaseModel):
     email: str
     phone: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
 
 
 class ManagerCreate(ManagerBase):
@@ -28,6 +32,10 @@ class ManagerUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 

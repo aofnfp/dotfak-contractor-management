@@ -39,6 +39,10 @@ class ManagerVerifyTokenResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
 
 
 class ManagerSetupAccountRequest(BaseModel):
@@ -59,6 +63,10 @@ class ManagerUpdateProfileRequest(BaseModel):
     last_name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
     bank_account_last4: Optional[str] = None
 
 
@@ -211,7 +219,7 @@ async def verify_manager_token(token: str):
     """Verify a manager invitation token. No auth required."""
     try:
         result = supabase_admin_client.table("manager_invitations").select(
-            "*, managers(id, first_name, last_name, phone, address, email, auth_user_id)"
+            "*, managers(id, first_name, last_name, phone, address, city, state, country, zip_code, email, auth_user_id)"
         ).eq("token", token).execute()
 
         if not result.data:
@@ -248,6 +256,10 @@ async def verify_manager_token(token: str):
             email=invitation["email"],
             phone=manager.get("phone"),
             address=manager.get("address"),
+            city=manager.get("city"),
+            state=manager.get("state"),
+            country=manager.get("country"),
+            zip_code=manager.get("zip_code"),
         )
     except Exception as e:
         logger.error(f"Manager token verification error: {e}")
@@ -357,6 +369,14 @@ async def update_manager_profile(
             update_data["phone"] = data.phone
         if data.address is not None:
             update_data["address"] = data.address
+        if data.city is not None:
+            update_data["city"] = data.city
+        if data.state is not None:
+            update_data["state"] = data.state
+        if data.country is not None:
+            update_data["country"] = data.country
+        if data.zip_code is not None:
+            update_data["zip_code"] = data.zip_code
 
         if update_data:
             supabase_admin_client.table("managers").update(
@@ -385,6 +405,22 @@ async def complete_manager_profile(
         if not manager_id:
             raise HTTPException(status_code=404, detail="Manager profile not found")
 
+        # Validate required address fields
+        missing = []
+        if not data.address:
+            missing.append("street address")
+        if not data.city:
+            missing.append("city")
+        if not data.state:
+            missing.append("state")
+        if not data.country:
+            missing.append("country")
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required fields: {', '.join(missing)}. Please complete your profile.",
+            )
+
         # Apply profile updates
         update_data = {}
         if data.first_name is not None:
@@ -395,6 +431,14 @@ async def complete_manager_profile(
             update_data["phone"] = data.phone
         if data.address is not None:
             update_data["address"] = data.address
+        if data.city is not None:
+            update_data["city"] = data.city
+        if data.state is not None:
+            update_data["state"] = data.state
+        if data.country is not None:
+            update_data["country"] = data.country
+        if data.zip_code is not None:
+            update_data["zip_code"] = data.zip_code
 
         if update_data:
             supabase_admin_client.table("managers").update(

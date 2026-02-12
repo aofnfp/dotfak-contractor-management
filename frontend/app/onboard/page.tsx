@@ -164,6 +164,10 @@ function OnboardWizard() {
           lastName={tokenData?.last_name || ''}
           phone={tokenData?.phone}
           address={tokenData?.address}
+          city={tokenData?.city}
+          state={tokenData?.state}
+          country={tokenData?.country}
+          zip_code={tokenData?.zip_code}
           onComplete={(cId) => {
             setContractId(cId)
             setStep('contract')

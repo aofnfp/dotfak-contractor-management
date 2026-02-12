@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { PINNED_COUNTRIES, ALL_OTHER_COUNTRIES } from '@/lib/constants/countries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useContractor, useUpdateContractor } from '@/lib/hooks/useContractors'
 
@@ -24,6 +26,10 @@ export default function EditContractorPage() {
     last_name: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    country: '',
+    zip_code: '',
     ssn_last_4: '',
     notes: '',
     is_active: true,
@@ -37,6 +43,10 @@ export default function EditContractorPage() {
         last_name: contractor.last_name,
         phone: contractor.phone || '',
         address: contractor.address || '',
+        city: contractor.city || '',
+        state: contractor.state || '',
+        country: contractor.country || '',
+        zip_code: contractor.zip_code || '',
         ssn_last_4: contractor.ssn_last_4 || '',
         notes: contractor.notes || '',
         is_active: contractor.is_active,
@@ -55,6 +65,10 @@ export default function EditContractorPage() {
           // Remove empty optional fields
           phone: formData.phone || undefined,
           address: formData.address || undefined,
+          city: formData.city || undefined,
+          state: formData.state || undefined,
+          country: formData.country || undefined,
+          zip_code: formData.zip_code || undefined,
           ssn_last_4: formData.ssn_last_4 || undefined,
           notes: formData.notes || undefined,
         },
@@ -196,14 +210,76 @@ export default function EditContractorPage() {
 
             {/* Address */}
             <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">Street Address</Label>
               <Input
                 id="address"
-                placeholder="123 Main St, City, State ZIP"
+                placeholder="123 Main Street"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="bg-background border-border"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="New York"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  placeholder="NY"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="country">Country</Label>
+                <Select
+                  value={formData.country}
+                  onValueChange={(value) => setFormData({ ...formData, country: value })}
+                >
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PINNED_COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    {ALL_OTHER_COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="zip_code">ZIP Code</Label>
+                <Input
+                  id="zip_code"
+                  placeholder="10001"
+                  value={formData.zip_code}
+                  onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                  className="bg-background border-border"
+                />
+              </div>
             </div>
 
             {/* Notes */}

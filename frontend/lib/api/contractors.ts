@@ -12,6 +12,10 @@ export interface Contractor {
   last_name: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
   ssn_last_4?: string
   notes?: string
   is_active: boolean
@@ -26,6 +30,10 @@ export interface CreateContractorRequest {
   last_name: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  country?: string
+  zip_code?: string
   ssn_last_4?: string
   notes?: string
   is_active?: boolean

@@ -12,8 +12,17 @@ import { useContract, useSignContract } from '@/lib/hooks/useContracts'
 import { ContractViewer } from '@/components/contracts/ContractViewer'
 import { SignatureCapture } from '@/components/contracts/SignatureCapture'
 import { updateCachedToken, getApiErrorMessage } from '@/lib/api/client'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import { CheckCircle2 } from 'lucide-react'
+import { PINNED_COUNTRIES, ALL_OTHER_COUNTRIES } from '@/lib/constants/countries'
 import Link from 'next/link'
 import type { SignatureMethod } from '@/lib/types/contract'
 
@@ -163,12 +172,20 @@ function ManagerVerifyProfileStep({
   lastName,
   phone,
   address,
+  city,
+  state,
+  country,
+  zip_code,
   onComplete,
 }: {
   firstName: string
   lastName: string
   phone?: string | null
   address?: string | null
+  city?: string | null
+  state?: string | null
+  country?: string | null
+  zip_code?: string | null
   onComplete: (contractIds: string[]) => void
 }) {
   const [formData, setFormData] = useState({
@@ -176,6 +193,10 @@ function ManagerVerifyProfileStep({
     last_name: lastName,
     phone: phone || '',
     address: address || '',
+    city: city || '',
+    state: state || '',
+    country: country || 'NG',
+    zip_code: zip_code || '',
     bank_account_last4: '',
   })
 
@@ -184,6 +205,22 @@ function ManagerVerifyProfileStep({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!formData.address.trim()) {
+      toast.error('Please enter your street address')
+      return
+    }
+    if (!formData.city.trim()) {
+      toast.error('Please enter your city')
+      return
+    }
+    if (!formData.state.trim()) {
+      toast.error('Please enter your state')
+      return
+    }
+    if (!formData.country) {
+      toast.error('Please select your country')
+      return
+    }
     if (!formData.bank_account_last4 || formData.bank_account_last4.length !== 4) {
       toast.error('Please enter the last 4 digits of your bank account')
       return
@@ -248,14 +285,82 @@ function ManagerVerifyProfileStep({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">
+              Street Address <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="address"
-              placeholder="Your full address"
+              placeholder="Street address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="bg-secondary border-border"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="city">
+                City <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="city"
+                placeholder="City"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="bg-secondary border-border"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="state">
+                State <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="state"
+                placeholder="State / Province"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className="bg-secondary border-border"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="country">
+                Country <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.country}
+                onValueChange={(val) => setFormData({ ...formData, country: val })}
+              >
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PINNED_COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectSeparator />
+                  {ALL_OTHER_COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="zip_code">ZIP / Postal Code</Label>
+              <Input
+                id="zip_code"
+                placeholder="ZIP code"
+                value={formData.zip_code}
+                onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                className="bg-secondary border-border"
+              />
+            </div>
           </div>
 
           <div className="grid gap-2">
@@ -578,6 +683,10 @@ function ManagerOnboardWizard() {
           lastName={tokenData?.last_name || ''}
           phone={tokenData?.phone}
           address={tokenData?.address}
+          city={tokenData?.city}
+          state={tokenData?.state}
+          country={tokenData?.country}
+          zip_code={tokenData?.zip_code}
           onComplete={(ids) => {
             setContractIds(ids)
             setCurrentContractIndex(0)

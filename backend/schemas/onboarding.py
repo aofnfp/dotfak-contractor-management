@@ -64,6 +64,10 @@ class VerifyTokenResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
 
 
 # ============================================================================
@@ -94,8 +98,11 @@ class UpdateProfileRequest(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
-    address: Optional[str] = None
-    country: Optional[str] = Field(None, max_length=3, description="ISO country code (NG, US)")
+    address: Optional[str] = Field(None, description="Street address")
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=2, description="ISO 3166-1 alpha-2 country code")
+    zip_code: Optional[str] = Field(None, max_length=20)
     bank_account_last4: Optional[str] = Field(None, min_length=4, max_length=4, description="Last 4 digits of bank account")
 
 
