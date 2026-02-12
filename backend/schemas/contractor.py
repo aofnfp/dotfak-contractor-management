@@ -85,7 +85,7 @@ class AssignmentBase(BaseModel):
     contractor_id: UUID
     client_company_id: UUID
     client_employee_id: Optional[str] = Field(None, max_length=50, description="Employee ID on client's paystub for auto-matching")
-    job_title: Optional[str] = Field(None, max_length=100, description="Contractor's role/title at the client (e.g., Customer Service Representative)")
+    job_title: str = Field(..., max_length=100, description="Contractor's role/title at the client (e.g., Customer Service Representative)")
 
     # Rate structure (flexible: fixed OR percentage)
     rate_type: str = Field(..., description="Rate type: 'fixed' or 'percentage'")
