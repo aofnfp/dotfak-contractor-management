@@ -271,5 +271,5 @@ All Phase 1 objectives have been successfully implemented and tested. The founda
 
 **Deployment ready for:**
 - Backend: Coolify VPS (Docker)
-- Frontend: Netlify
+- Frontend: Coolify VPS (Docker)
 - Database: Supabase (free tier, 500MB)

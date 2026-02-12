@@ -666,7 +666,7 @@ Once all tests pass:
 
 1. **Deploy Backend** → Coolify VPS (Docker)
 2. **Deploy Database** → Supabase (already deployed)
-3. **Deploy Frontend** → Netlify (auto-deploy on push)
+3. **Deploy Frontend** → Coolify VPS (Docker)
 4. **Add Monitoring** → Sentry, UptimeRobot
 5. **Go Live!** → Production ready
 

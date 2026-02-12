@@ -383,8 +383,8 @@ Use managed PostgreSQL:
 
 ### Frontend Hosting
 
+- **Coolify** (self-hosted VPS, Docker)
 - **Vercel** (for Next.js/React)
-- **Netlify** (static sites)
 - **GitHub Pages** (simple HTML)
 
 ## Troubleshooting
