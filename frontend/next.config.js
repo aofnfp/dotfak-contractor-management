@@ -6,7 +6,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'dotfak-contractor-management.netlify.app',
+        hostname: 'dotfak.com',
       },
     ],
   },
@@ -17,7 +17,7 @@ const nextConfig = {
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
 
-  // Proxy /api/* to backend — replaces Netlify [[redirects]]
+  // Proxy /api/* to backend
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
     return [

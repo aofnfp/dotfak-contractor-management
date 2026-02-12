@@ -11,9 +11,9 @@
 │                     Production Setup                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
-│  Frontend (Next.js)          ──────►  Netlify               │
-│  ├─ Admin Dashboard                   • Auto-deploy on push │
-│  └─ Contractor Portal                 • Global CDN          │
+│  Frontend (Next.js)          ──────►  Coolify VPS           │
+│  ├─ Admin Dashboard                   • Docker-based        │
+│  └─ Contractor Portal                 • https://dotfak.com  │
 │                                                               │
 │  Backend (FastAPI)           ──────►  Coolify VPS           │
 │  ├─ REST API                          • Docker-based        │
@@ -34,34 +34,27 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://dotfak-contractor-management.netlify.app |
+| Frontend | https://dotfak.com |
 | Backend API | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io |
 | API Docs | http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io/docs |
 | Database | https://supabase.com/dashboard/project/pcatbotfxeqrinydewen |
 
 ---
 
-## Frontend (Netlify)
+## Frontend (Coolify)
 
-**Config file:** `netlify.toml` (project root)
+**Deployment:** Docker-based via Coolify. Uses Next.js standalone output mode.
 
-**Build settings:**
-- Build command: `cd frontend && npm install && npm run build`
-- Publish directory: `frontend/.next`
-- Plugin: `@netlify/plugin-nextjs`
+**Domain:** `https://dotfak.com`
 
-**Environment variables (set in netlify.toml):**
+**API Proxy:** Next.js rewrites in `next.config.js` proxy `/api/*` to the backend.
+
+**Environment variables:** Set in Coolify dashboard.
 ```
 NEXT_PUBLIC_API_URL = /api
 NEXT_PUBLIC_APP_NAME = DotFak Contractor Management
-NODE_VERSION = 20
+BACKEND_URL = http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io
 ```
-
-**API Proxy:** Netlify proxies `/api/*` to the Coolify backend (`http://q0c480kc0gcokkkk8ksggoso.172.190.9.72.sslip.io`). This solves HTTPS mixed content — the browser only sees same-origin HTTPS requests.
-
-**Important:** `NEXT_PUBLIC_*` variables are baked in at build time. If you change them, you must trigger a new Netlify deploy.
-
-**Auto-deploy:** Every push to `main` triggers a new build.
 
 ---
 
@@ -81,6 +74,7 @@ ENV PYTHONUNBUFFERED=1
 **`.dockerignore`** excludes `__pycache__/`, `*.pyc`, `.git/`, `.env`, `frontend/`, etc.
 
 **Environment variables:** Set in Coolify dashboard (same as `.env`).
+- `FRONTEND_URL` must be set to `https://dotfak.com` (used for CORS and email links)
 
 ---
 
@@ -98,7 +92,7 @@ ENV PYTHONUNBUFFERED=1
 git add .
 git commit -m "feat: description"
 git push origin main
-# Netlify auto-builds and deploys
+# Redeploy in Coolify dashboard (or set up auto-deploy from GitHub)
 ```
 
 ### Backend changes
@@ -112,8 +106,8 @@ git push origin main
 ## Troubleshooting
 
 ### Frontend still hitting wrong backend
-- Check `netlify.toml` → `NEXT_PUBLIC_API_URL` is correct
-- Trigger a fresh Netlify deploy (env vars are baked at build time)
+- Check `BACKEND_URL` env var in Coolify is set correctly
+- Rebuild the frontend container (env vars are baked at build time for `NEXT_PUBLIC_*`)
 - Hard refresh browser (Ctrl+Shift+R) to clear cached JS bundles
 
 ### Backend returning old code
@@ -122,5 +116,5 @@ git push origin main
 - Verify with `/debug/parser-version` endpoint
 
 ### CORS errors
-- Check `FRONTEND_URL` env var in Coolify matches Netlify URL
-- Backend `main.py` must include the Netlify domain in allowed origins
+- Check `FRONTEND_URL` env var in Coolify matches `https://dotfak.com`
+- Backend `main.py` uses `FRONTEND_URL` from config for CORS origins

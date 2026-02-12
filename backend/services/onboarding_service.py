@@ -8,11 +8,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from backend.config import supabase_admin_client
+from backend.config import supabase_admin_client, FRONTEND_URL
 
 logger = logging.getLogger(__name__)
-
-FRONTEND_URL = "https://dotfak-contractor-management.netlify.app"
 INVITATION_EXPIRY_DAYS = 7
 
 

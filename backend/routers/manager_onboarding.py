@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 
-from backend.config import supabase_admin_client
+from backend.config import supabase_admin_client, FRONTEND_URL
 from backend.dependencies import require_admin, verify_token, get_manager_id
 from backend.services.contract_service import ContractService
 from backend.services.email_service import email_service
@@ -22,8 +22,6 @@ from backend.services.email_service import email_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["manager-onboarding"])
-
-FRONTEND_URL = "https://dotfak-contractor-management.netlify.app"
 INVITATION_EXPIRY_DAYS = 7
 
 

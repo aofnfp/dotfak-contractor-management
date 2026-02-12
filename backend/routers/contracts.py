@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, Request
 from typing import List
 import logging
 
-from backend.config import supabase_admin_client
+from backend.config import supabase_admin_client, FRONTEND_URL
 from backend.dependencies import require_admin, verify_token, get_contractor_id, get_manager_id
 from backend.services.contract_service import ContractService
 from backend.services.email_service import email_service
@@ -276,7 +276,7 @@ async def sign_contract(
                     await email_service.send_admin_signature_needed(
                         admin_email=email_service.sender_email,
                         contractor_name=name,
-                        dashboard_url="https://dotfak-contractor-management.netlify.app/contracts",
+                        dashboard_url=f"{FRONTEND_URL}/contracts",
                     )
                 except Exception as e:
                     logger.warning(f"Failed to send admin notification: {e}")
@@ -295,7 +295,7 @@ async def sign_contract(
                     await email_service.send_admin_signature_needed(
                         admin_email=email_service.sender_email,
                         contractor_name=name,
-                        dashboard_url="https://dotfak-contractor-management.netlify.app/contracts",
+                        dashboard_url=f"{FRONTEND_URL}/contracts",
                     )
                 except Exception as e:
                     logger.warning(f"Failed to send admin notification: {e}")
@@ -319,7 +319,7 @@ async def sign_contract(
                         await email_service.send_contract_executed(
                             to_email=m["email"],
                             contractor_name=f"{m['first_name']} {m['last_name']}",
-                            pdf_url=pdf_url or "https://dotfak-contractor-management.netlify.app/contracts",
+                            pdf_url=pdf_url or f"{FRONTEND_URL}/contracts",
                         )
                 except Exception as e:
                     logger.warning(f"Failed to send execution notification: {e}")
@@ -339,7 +339,7 @@ async def sign_contract(
                         await email_service.send_contract_executed(
                             to_email=c["email"],
                             contractor_name=f"{c['first_name']} {c['last_name']}",
-                            pdf_url=pdf_url or "https://dotfak-contractor-management.netlify.app/contracts",
+                            pdf_url=pdf_url or f"{FRONTEND_URL}/contracts",
                         )
                 except Exception as e:
                     logger.warning(f"Failed to send execution notification: {e}")
