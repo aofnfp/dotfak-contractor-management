@@ -305,6 +305,36 @@ async def update_contractor(
         )
 
 
+@router.post("/{contractor_id}/activate", response_model=ContractorResponse)
+async def activate_contractor(
+    contractor_id: str,
+    user: dict = Depends(require_admin)
+):
+    """Reactivate a deactivated contractor (admin only)."""
+    try:
+        result = supabase_admin_client.table("contractors").update({
+            "is_active": True
+        }).eq("id", contractor_id).execute()
+
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Contractor not found"
+            )
+
+        logger.info(f"Contractor reactivated: {contractor_id}")
+        return result.data[0]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reactivate contractor: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reactivate contractor: {str(e)}"
+        )
+
+
 @router.delete("/{contractor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contractor(
     contractor_id: str,

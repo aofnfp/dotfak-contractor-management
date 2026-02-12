@@ -43,6 +43,16 @@ export const managersApi = {
     const response = await apiClient.post(`/managers/${id}/invite`, { email })
     return response.data
   },
+
+  activate: async (id: string): Promise<Manager> => {
+    const response = await apiClient.post(`/managers/${id}/activate`)
+    return response.data
+  },
+
+  resendInvite: async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/managers/${id}/invite/resend`)
+    return response.data
+  },
 }
 
 export const managerAssignmentsApi = {

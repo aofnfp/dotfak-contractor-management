@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, memo } from 'react'
-import { MoreHorizontal, Trash2, Eye, Mail } from 'lucide-react'
+import { MoreHorizontal, Trash2, Eye, Mail, RotateCcw, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { useDeleteManager, useInviteManager } from '@/lib/hooks/useManagers'
+import { useDeleteManager, useInviteManager, useActivateManager, useResendManagerInvite } from '@/lib/hooks/useManagers'
 import type { Manager } from '@/lib/types/manager'
 
 interface ManagersTableProps {
@@ -47,9 +47,12 @@ export const ManagersTable = memo(function ManagersTable({ managers, isLoading }
   const router = useRouter()
   const deleteManager = useDeleteManager()
   const inviteManager = useInviteManager()
+  const activateManager = useActivateManager()
+  const resendInvite = useResendManagerInvite()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
 
-  const handleDelete = async (id: string) => {
+  const handleDeactivate = async (id: string) => {
     if (confirm('Are you sure you want to deactivate this manager?')) {
       setDeletingId(id)
       await deleteManager.mutateAsync(id)
@@ -57,8 +60,18 @@ export const ManagersTable = memo(function ManagersTable({ managers, isLoading }
     }
   }
 
+  const handleActivate = async (id: string) => {
+    setActivatingId(id)
+    await activateManager.mutateAsync(id)
+    setActivatingId(null)
+  }
+
   const handleInvite = async (id: string, email: string) => {
     await inviteManager.mutateAsync({ id, email })
+  }
+
+  const handleResendInvite = async (id: string) => {
+    await resendInvite.mutateAsync(id)
   }
 
   if (isLoading) {
@@ -162,18 +175,43 @@ export const ManagersTable = memo(function ManagersTable({ managers, isLoading }
                         Send Invitation
                       </DropdownMenuItem>
                     )}
+                    {manager.onboarding_status === 'invited' && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleResendInvite(manager.id)
+                        }}
+                        disabled={resendInvite.isPending}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        {resendInvite.isPending ? 'Resending...' : 'Resend Invitation'}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(manager.id)
-                      }}
-                      className="text-destructive focus:text-destructive"
-                      disabled={deletingId === manager.id}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {deletingId === manager.id ? 'Deactivating...' : 'Deactivate'}
-                    </DropdownMenuItem>
+                    {manager.is_active ? (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeactivate(manager.id)
+                        }}
+                        className="text-destructive focus:text-destructive"
+                        disabled={deletingId === manager.id}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {deletingId === manager.id ? 'Deactivating...' : 'Deactivate'}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleActivate(manager.id)
+                        }}
+                        disabled={activatingId === manager.id}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        {activatingId === manager.id ? 'Reactivating...' : 'Reactivate'}
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

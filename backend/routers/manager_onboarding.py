@@ -145,6 +145,63 @@ async def invite_manager(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/managers/{manager_id}/invite/resend")
+async def resend_manager_invitation(
+    manager_id: str,
+    user: dict = Depends(require_admin),
+):
+    """Resend the most recent pending invitation email for a manager (admin only)."""
+    try:
+        # Find the most recent pending invitation for this manager
+        inv = supabase_admin_client.table("manager_invitations").select(
+            "*, managers(first_name, last_name)"
+        ).eq("manager_id", manager_id).is_("accepted_at", "null").order(
+            "created_at", desc=True
+        ).limit(1).execute()
+
+        if not inv.data:
+            raise HTTPException(status_code=404, detail="No pending invitation found for this manager")
+
+        invitation = inv.data[0]
+
+        # Check expiry - if expired, create a new token
+        expires_at = datetime.fromisoformat(invitation["expires_at"].replace("Z", "+00:00"))
+        if datetime.utcnow().replace(tzinfo=expires_at.tzinfo) > expires_at:
+            # Create new invitation token
+            token = secrets.token_hex(64)
+            new_expires_at = datetime.utcnow() + timedelta(days=INVITATION_EXPIRY_DAYS)
+
+            result = supabase_admin_client.table("manager_invitations").insert({
+                "manager_id": manager_id,
+                "email": invitation["email"],
+                "token": token,
+                "invited_by": user["user_id"],
+                "expires_at": new_expires_at.isoformat(),
+            }).execute()
+
+            if not result.data:
+                raise Exception("Failed to create new invitation")
+
+            invitation = result.data[0]
+            invitation["managers"] = inv.data[0].get("managers")
+        else:
+            token = invitation["token"]
+
+        m = invitation.get("managers", {}) or {}
+        manager_name = f"{m.get('first_name', '')} {m.get('last_name', '')}".strip()
+        invite_url = f"{FRONTEND_URL}/onboard/manager?token={token}"
+
+        await email_service.send_invitation(invitation["email"], manager_name, invite_url)
+
+        return {"success": True, "message": f"Invitation resent to {invitation['email']}"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resend manager invitation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # Public Endpoints (no auth)
 # ============================================================================

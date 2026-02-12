@@ -88,3 +88,35 @@ export function useInviteManager() {
     },
   })
 }
+
+export function useActivateManager() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: managersApi.activate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['managers'] })
+      toast.success('Manager reactivated successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to reactivate manager')
+    },
+  })
+}
+
+export function useResendManagerInvite() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: managersApi.resendInvite,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['managers'] })
+      toast.success('Invitation resent successfully')
+    },
+    onError: (error: any) => {
+      const detail = error.response?.data?.detail
+      const message = typeof detail === 'string' ? detail : 'Failed to resend invitation'
+      toast.error(message)
+    },
+  })
+}

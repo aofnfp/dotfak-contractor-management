@@ -194,6 +194,36 @@ async def update_manager(
         )
 
 
+@router.post("/{manager_id}/activate", response_model=ManagerResponse)
+async def activate_manager(
+    manager_id: str,
+    user: dict = Depends(require_admin)
+):
+    """Reactivate a deactivated manager (admin only)."""
+    try:
+        result = supabase_admin_client.table("managers").update({
+            "is_active": True
+        }).eq("id", manager_id).execute()
+
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Manager not found"
+            )
+
+        logger.info(f"Manager reactivated: {manager_id}")
+        return result.data[0]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reactivate manager: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reactivate manager: {str(e)}"
+        )
+
+
 @router.delete("/{manager_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_manager(
     manager_id: str,

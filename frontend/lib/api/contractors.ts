@@ -67,9 +67,17 @@ export const contractorsApi = {
   },
 
   /**
-   * Delete a contractor
+   * Delete (deactivate) a contractor
    */
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/contractors/${id}`)
+  },
+
+  /**
+   * Reactivate a deactivated contractor
+   */
+  activate: async (id: string): Promise<Contractor> => {
+    const response = await apiClient.post(`/contractors/${id}/activate`)
+    return response.data
   },
 }

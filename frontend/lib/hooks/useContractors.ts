@@ -67,7 +67,7 @@ export function useUpdateContractor() {
 }
 
 /**
- * Hook to delete a contractor
+ * Hook to delete (deactivate) a contractor
  */
 export function useDeleteContractor() {
   const queryClient = useQueryClient()
@@ -76,10 +76,28 @@ export function useDeleteContractor() {
     mutationFn: contractorsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contractors'] })
-      toast.success('Contractor deleted successfully')
+      toast.success('Contractor deactivated successfully')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete contractor')
+      toast.error(error.response?.data?.detail || 'Failed to deactivate contractor')
+    },
+  })
+}
+
+/**
+ * Hook to reactivate a contractor
+ */
+export function useActivateContractor() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: contractorsApi.activate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contractors'] })
+      toast.success('Contractor reactivated successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to reactivate contractor')
     },
   })
 }

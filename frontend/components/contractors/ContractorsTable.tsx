@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, memo } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Eye, RotateCcw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { useDeleteContractor } from '@/lib/hooks/useContractors'
+import { useDeleteContractor, useActivateContractor } from '@/lib/hooks/useContractors'
 import type { Contractor } from '@/lib/api/contractors'
 
 interface ContractorsTableProps {
@@ -32,14 +32,22 @@ interface ContractorsTableProps {
 export const ContractorsTable = memo(function ContractorsTable({ contractors, isLoading }: ContractorsTableProps) {
   const router = useRouter()
   const deleteContractor = useDeleteContractor()
+  const activateContractor = useActivateContractor()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this contractor?')) {
+  const handleDeactivate = async (id: string) => {
+    if (confirm('Are you sure you want to deactivate this contractor?')) {
       setDeletingId(id)
       await deleteContractor.mutateAsync(id)
       setDeletingId(null)
     }
+  }
+
+  const handleActivate = async (id: string) => {
+    setActivatingId(id)
+    await activateContractor.mutateAsync(id)
+    setActivatingId(null)
   }
 
   if (isLoading) {
@@ -130,17 +138,30 @@ export const ContractorsTable = memo(function ContractorsTable({ contractors, is
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(contractor.id)
-                      }}
-                      className="text-destructive focus:text-destructive"
-                      disabled={deletingId === contractor.id}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {deletingId === contractor.id ? 'Deleting...' : 'Delete'}
-                    </DropdownMenuItem>
+                    {contractor.is_active ? (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeactivate(contractor.id)
+                        }}
+                        className="text-destructive focus:text-destructive"
+                        disabled={deletingId === contractor.id}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {deletingId === contractor.id ? 'Deactivating...' : 'Deactivate'}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleActivate(contractor.id)
+                        }}
+                        disabled={activatingId === contractor.id}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        {activatingId === contractor.id ? 'Reactivating...' : 'Reactivate'}
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
