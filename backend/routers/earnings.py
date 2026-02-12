@@ -22,6 +22,7 @@ router = APIRouter(prefix="/earnings", tags=["earnings"])
 @router.get("", response_model=List[EarningsResponse])
 async def list_earnings(
     contractor_id: Optional[str] = None,
+    client_id: Optional[str] = None,
     payment_status: Optional[str] = None,
     limit: int = 100,
     user: dict = Depends(verify_token)
@@ -29,11 +30,12 @@ async def list_earnings(
     """
     List earnings.
 
-    - Admin: sees all earnings (can filter by contractor)
+    - Admin: sees all earnings (can filter by contractor and/or client)
     - Contractor: sees only their own earnings
 
     Args:
         contractor_id: Filter by contractor UUID (admin only)
+        client_id: Filter by client company UUID (admin only)
         payment_status: Filter by payment status (unpaid, partially_paid, paid)
         limit: Maximum number of results
         user: Current user
@@ -46,11 +48,14 @@ async def list_earnings(
 
         # Build query based on role
         if role == "admin":
-            if contractor_id:
-                # Admin filtering by specific contractor
-                assignments = supabase_admin_client.table("contractor_assignments").select("id").eq(
-                    "contractor_id", contractor_id
-                ).execute()
+            if contractor_id or client_id:
+                # Admin filtering by contractor and/or client
+                assign_query = supabase_admin_client.table("contractor_assignments").select("id")
+                if contractor_id:
+                    assign_query = assign_query.eq("contractor_id", contractor_id)
+                if client_id:
+                    assign_query = assign_query.eq("client_company_id", client_id)
+                assignments = assign_query.execute()
 
                 if not assignments.data:
                     return []
