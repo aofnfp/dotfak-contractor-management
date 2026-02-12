@@ -58,9 +58,9 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
       <div className="fixed inset-y-0 left-0 z-50 w-72 bg-secondary border-r border-border shadow-xl md:hidden">
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center justify-between border-b border-gold/30 px-6">
-            <div className="flex items-center gap-2">
-              <Image src="/griffin-icon.png" alt="DotFak" width={28} height={28} className="rounded-sm" />
+          <div className="flex items-center justify-between border-b border-gold/30 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <Image src="/griffin-icon.png" alt="DotFak" width={84} height={84} className="h-[84px] w-[84px] rounded-sm" />
               <div className="flex flex-col">
                 <span className="text-sm font-heading font-semibold text-gold tracking-[0.15em] uppercase">
                   DOTFAK

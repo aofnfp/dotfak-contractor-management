@@ -21,8 +21,8 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-secondary border-r border-border">
       {/* Logo / Branding */}
-      <div className="flex h-16 items-center gap-2 border-b border-gold/30 px-6">
-        <Image src="/griffin-icon.png" alt="DotFak" width={28} height={28} className="rounded-sm" />
+      <div className="flex items-center gap-3 border-b border-gold/30 px-6 py-4">
+        <Image src="/griffin-icon.png" alt="DotFak" width={84} height={84} className="h-[84px] w-[84px] rounded-sm" />
         <div className="flex flex-col">
           <span className="text-sm font-heading font-semibold text-gold tracking-[0.15em] uppercase">
             DOTFAK
