@@ -9,12 +9,17 @@ import logging
 
 from backend.config import supabase_admin_client, supabase_client
 from backend.dependencies import require_admin, verify_token, get_contractor_id
+from datetime import date
+
 from backend.schemas import (
     AssignmentCreate,
     AssignmentUpdate,
+    EndAssignmentRequest,
     AssignmentResponse,
     AssignmentWithDetails,
 )
+
+VALID_END_REASONS = {"transferred", "end_of_contract", "laid_off", "termination"}
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +226,75 @@ async def list_assignments(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve assignments: {str(e)}"
+        )
+
+
+@router.post("/{assignment_id}/end", response_model=AssignmentResponse)
+async def end_assignment(
+    assignment_id: str,
+    request: EndAssignmentRequest,
+    user: dict = Depends(require_admin)
+):
+    """
+    End a contractor assignment with a reason (admin only).
+
+    Sets is_active=False, end_date, end_reason, and end_notes.
+    Also ends any linked manager assignments with the same reason.
+    """
+    try:
+        if request.end_reason not in VALID_END_REASONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"end_reason must be one of: {sorted(VALID_END_REASONS)}"
+            )
+
+        # Fetch assignment, verify it exists and is active
+        current = supabase_admin_client.table("contractor_assignments").select("*").eq(
+            "id", assignment_id
+        ).execute()
+
+        if not current.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+        if not current.data[0]["is_active"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assignment is already ended")
+
+        end_date = request.end_date or str(date.today())
+
+        # Update contractor assignment
+        result = supabase_admin_client.table("contractor_assignments").update({
+            "is_active": False,
+            "end_date": end_date,
+            "end_reason": request.end_reason,
+            "end_notes": request.end_notes,
+        }).eq("id", assignment_id).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to end assignment")
+
+        # Cascade: end all active manager assignments linked to this contractor assignment
+        manager_assignments = supabase_admin_client.table("manager_assignments").select("id").eq(
+            "contractor_assignment_id", assignment_id
+        ).eq("is_active", True).execute()
+
+        for ma in (manager_assignments.data or []):
+            supabase_admin_client.table("manager_assignments").update({
+                "is_active": False,
+                "end_date": end_date,
+                "end_reason": request.end_reason,
+                "end_notes": f"Auto-ended: contractor assignment ended ({request.end_reason})",
+            }).eq("id", ma["id"]).execute()
+
+        logger.info(f"Assignment ended: {assignment_id}, reason={request.end_reason}, cascaded={len(manager_assignments.data or [])} manager assignments")
+        return result.data[0]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to end assignment: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to end assignment: {str(e)}"
         )
 
 

@@ -40,6 +40,8 @@ export interface ManagerAssignment {
   start_date: string
   end_date?: string
   is_active: boolean
+  end_reason?: string
+  end_notes?: string
   notes?: string
   created_at: string
   updated_at?: string

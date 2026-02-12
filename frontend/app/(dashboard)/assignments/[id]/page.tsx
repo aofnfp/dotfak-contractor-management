@@ -1,13 +1,14 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, ArrowLeft, User, Building2, DollarSign, Calendar, FileText } from 'lucide-react'
+import { Pencil, Trash2, ArrowLeft, User, Building2, DollarSign, Calendar, FileText, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAssignment, useDeleteAssignment } from '@/lib/hooks/useAssignments'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { EndAssignmentDialog } from '@/components/assignments/EndAssignmentDialog'
+import { formatCurrency, formatDate, formatEndReason } from '@/lib/utils'
 
 interface AssignmentDetailPageProps {
   params: Promise<{
@@ -20,6 +21,7 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
   const router = useRouter()
   const { data: assignment, isLoading, error } = useAssignment(id)
   const deleteAssignment = useDeleteAssignment()
+  const [endDialogOpen, setEndDialogOpen] = useState(false)
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) {
@@ -86,9 +88,19 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </Button>
+          {assignment.is_active && (
+            <Button
+              onClick={() => setEndDialogOpen(true)}
+              variant="destructive"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              End Assignment
+            </Button>
+          )}
           <Button
             onClick={handleDelete}
-            variant="destructive"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
             disabled={deleteAssignment.isPending}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -98,13 +110,18 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
       </div>
 
       {/* Status Badge */}
-      <div>
+      <div className="flex items-center gap-2">
         <Badge
           variant={assignment.is_active ? 'default' : 'secondary'}
           className={assignment.is_active ? 'bg-cta hover:bg-cta/90' : ''}
         >
-          {assignment.is_active ? 'Active' : 'Inactive'}
+          {assignment.is_active ? 'Active' : 'Ended'}
         </Badge>
+        {!assignment.is_active && assignment.end_reason && (
+          <Badge variant="outline">
+            {formatEndReason(assignment.end_reason)}
+          </Badge>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -236,6 +253,18 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
                 <p className="font-medium">{formatDate(assignment.end_date)}</p>
               </div>
             )}
+            {assignment.end_reason && (
+              <div>
+                <p className="text-sm text-muted-foreground">End Reason</p>
+                <p className="font-medium">{formatEndReason(assignment.end_reason)}</p>
+              </div>
+            )}
+            {assignment.end_notes && (
+              <div>
+                <p className="text-sm text-muted-foreground">End Notes</p>
+                <p className="text-sm whitespace-pre-wrap">{assignment.end_notes}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Created</p>
               <p className="text-sm">{formatDate(assignment.created_at)}</p>
@@ -264,6 +293,14 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
           </CardContent>
         </Card>
       )}
+
+      <EndAssignmentDialog
+        open={endDialogOpen}
+        onOpenChange={setEndDialogOpen}
+        assignmentId={id}
+        assignmentLabel={`${assignment.contractor_name} → ${assignment.client_name}`}
+        onSuccess={() => router.push('/assignments')}
+      />
     </div>
   )
 }

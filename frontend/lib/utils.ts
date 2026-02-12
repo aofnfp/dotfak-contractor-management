@@ -52,3 +52,14 @@ export function formatCurrency(amount: number): string {
     currency: 'USD',
   }).format(amount)
 }
+
+const END_REASON_LABELS: Record<string, string> = {
+  transferred: 'Transferred',
+  end_of_contract: 'End of Contract',
+  laid_off: 'Laid Off',
+  termination: 'Terminated',
+}
+
+export function formatEndReason(reason: string): string {
+  return END_REASON_LABELS[reason] || reason
+}

@@ -62,6 +62,11 @@ export const managerAssignmentsApi = {
     return response.data
   },
 
+  endAssignment: async (id: string, data: { end_reason: string; end_notes?: string; end_date?: string }): Promise<ManagerAssignment> => {
+    const response = await apiClient.post(`/manager-assignments/${id}/end`, data)
+    return response.data
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/manager-assignments/${id}`)
   },

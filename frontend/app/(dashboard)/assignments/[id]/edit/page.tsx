@@ -49,7 +49,6 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
     start_date: '',
     end_date: '',
     notes: '',
-    is_active: true,
   })
 
   // Pre-fill form when assignment data loads
@@ -67,7 +66,6 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
         start_date: assignment.start_date,
         end_date: assignment.end_date || '',
         notes: assignment.notes || '',
-        is_active: assignment.is_active,
       })
     }
   }, [assignment])
@@ -88,7 +86,6 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
           start_date: formData.start_date,
           end_date: formData.end_date || undefined,
           notes: formData.notes || undefined,
-          is_active: formData.is_active,
         },
       })
 
@@ -359,27 +356,6 @@ export default function EditAssignmentPage({ params }: EditAssignmentPageProps) 
                   className="bg-background border-border"
                 />
               </div>
-            </div>
-
-            {/* Status */}
-            <div className="grid gap-2">
-              <Label>
-                Status <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.is_active.toString()}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, is_active: value === 'true' })
-                }
-              >
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-secondary border-border">
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Notes */}

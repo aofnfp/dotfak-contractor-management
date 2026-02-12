@@ -5,6 +5,14 @@
 
 import apiClient from './client'
 
+export type EndReason = 'transferred' | 'end_of_contract' | 'laid_off' | 'termination'
+
+export interface EndAssignmentRequest {
+  end_reason: EndReason
+  end_notes?: string
+  end_date?: string
+}
+
 export interface Assignment {
   id: string
   contractor_id: string
@@ -18,6 +26,8 @@ export interface Assignment {
   start_date: string
   end_date?: string
   is_active: boolean
+  end_reason?: EndReason
+  end_notes?: string
   notes?: string
   created_at: string
   updated_at: string
@@ -86,6 +96,14 @@ export const assignmentsApi = {
    */
   update: async (id: string, data: UpdateAssignmentRequest): Promise<Assignment> => {
     const response = await apiClient.put(`/assignments/${id}`, data)
+    return response.data
+  },
+
+  /**
+   * End an assignment with a reason
+   */
+  endAssignment: async (id: string, data: EndAssignmentRequest): Promise<Assignment> => {
+    const response = await apiClient.post(`/assignments/${id}/end`, data)
     return response.data
   },
 

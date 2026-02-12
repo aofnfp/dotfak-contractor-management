@@ -108,10 +108,19 @@ class AssignmentUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class EndAssignmentRequest(BaseModel):
+    """Schema for ending a contractor assignment."""
+    end_reason: str = Field(..., description="Reason: 'transferred', 'end_of_contract', 'laid_off', 'termination'")
+    end_notes: Optional[str] = Field(None, description="Optional notes about why the assignment ended")
+    end_date: Optional[str] = Field(None, description="End date (YYYY-MM-DD), defaults to today")
+
+
 class AssignmentResponse(AssignmentBase):
     """Schema for assignment response."""
     id: UUID
     is_active: bool
+    end_reason: Optional[str] = None
+    end_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

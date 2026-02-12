@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, memo } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Eye, XCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { useDeleteAssignment } from '@/lib/hooks/useAssignments'
+import { EndAssignmentDialog } from '@/components/assignments/EndAssignmentDialog'
 import type { AssignmentWithDetails } from '@/lib/api/assignments'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatEndReason } from '@/lib/utils'
 
 interface AssignmentsTableProps {
   assignments: AssignmentWithDetails[]
@@ -34,6 +35,7 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
   const router = useRouter()
   const deleteAssignment = useDeleteAssignment()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [endDialogAssignment, setEndDialogAssignment] = useState<AssignmentWithDetails | null>(null)
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this assignment?')) {
@@ -124,12 +126,19 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
                 {assignment.bonus_split_percentage}%
               </TableCell>
               <TableCell>
-                <Badge
-                  variant={assignment.is_active ? 'default' : 'secondary'}
-                  className={assignment.is_active ? 'bg-cta hover:bg-cta/90' : ''}
-                >
-                  {assignment.is_active ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge
+                    variant={assignment.is_active ? 'default' : 'secondary'}
+                    className={assignment.is_active ? 'bg-cta hover:bg-cta/90' : ''}
+                  >
+                    {assignment.is_active ? 'Active' : 'Ended'}
+                  </Badge>
+                  {!assignment.is_active && assignment.end_reason && (
+                    <Badge variant="outline" className="text-xs">
+                      {formatEndReason(assignment.end_reason)}
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
@@ -160,6 +169,18 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    {assignment.is_active && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEndDialogAssignment(assignment)
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        End Assignment
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation()
@@ -178,6 +199,15 @@ export const AssignmentsTable = memo(function AssignmentsTable({ assignments, is
           ))}
         </TableBody>
       </Table>
+      {endDialogAssignment && (
+        <EndAssignmentDialog
+          open={!!endDialogAssignment}
+          onOpenChange={(open) => !open && setEndDialogAssignment(null)}
+          assignmentId={endDialogAssignment.id}
+          assignmentLabel={`${endDialogAssignment.contractor_name} → ${endDialogAssignment.client_name}`}
+          onSuccess={() => setEndDialogAssignment(null)}
+        />
+      )}
     </div>
   )
 })

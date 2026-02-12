@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { assignmentsApi, type CreateAssignmentRequest, type UpdateAssignmentRequest } from '@/lib/api/assignments'
+import { assignmentsApi, type CreateAssignmentRequest, type UpdateAssignmentRequest, type EndAssignmentRequest } from '@/lib/api/assignments'
 import { toast } from 'sonner'
 
 /**
@@ -72,6 +72,27 @@ export function useUpdateAssignment() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || 'Failed to update assignment')
+    },
+  })
+}
+
+/**
+ * Hook to end an assignment with a reason
+ */
+export function useEndAssignment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EndAssignmentRequest }) =>
+      assignmentsApi.endAssignment(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['assignments', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['manager-assignments'] })
+      toast.success('Assignment ended successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to end assignment')
     },
   })
 }

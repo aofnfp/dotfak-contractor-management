@@ -84,10 +84,19 @@ class ManagerAssignmentUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class EndManagerAssignmentRequest(BaseModel):
+    """Schema for ending a manager assignment."""
+    end_reason: str
+    end_notes: Optional[str] = None
+    end_date: Optional[str] = None
+
+
 class ManagerAssignmentResponse(ManagerAssignmentBase):
     id: str
     end_date: Optional[date] = None
     is_active: bool = True
+    end_reason: Optional[str] = None
+    end_notes: Optional[str] = None
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

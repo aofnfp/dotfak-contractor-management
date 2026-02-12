@@ -46,6 +46,23 @@ export function useUpdateManagerAssignment() {
   })
 }
 
+export function useEndManagerAssignment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { end_reason: string; end_notes?: string; end_date?: string } }) =>
+      managerAssignmentsApi.endAssignment(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manager-assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['managers'] })
+      toast.success('Manager assignment ended')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to end manager assignment')
+    },
+  })
+}
+
 export function useDeleteManagerAssignment() {
   const queryClient = useQueryClient()
 
