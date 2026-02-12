@@ -74,8 +74,10 @@ class PaymentListItem(BaseModel):
 # ============================================================================
 
 class EarningsResponse(BaseModel):
-    """Schema for earnings response (filtered for contractor view)."""
+    """Schema for earnings response."""
     id: UUID
+    contractor_assignment_id: UUID
+    paystub_id: int
     pay_period_begin: date
     pay_period_end: date
     client_total_hours: float
@@ -85,7 +87,16 @@ class EarningsResponse(BaseModel):
     payment_status: str
     amount_paid: float
     amount_pending: float
+    earnings_breakdown: Optional[dict] = None
     created_at: datetime
+    # Enrichment fields (added by enrich_earnings)
+    contractor_id: Optional[str] = None
+    contractor_name: Optional[str] = None
+    contractor_code: Optional[str] = None
+    client_name: Optional[str] = None
+    client_code: Optional[str] = None
+    paystub_file_name: Optional[str] = None
+    paystub_check_date: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -95,8 +106,6 @@ class EarningsDetailResponse(EarningsResponse):
     """Schema for detailed earnings response (admin view with company margin)."""
     client_gross_pay: float
     company_margin: float
-    contractor_assignment_id: UUID
-    paystub_id: int
 
 
 class EarningsSummary(BaseModel):
