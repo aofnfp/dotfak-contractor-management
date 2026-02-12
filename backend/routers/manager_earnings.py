@@ -11,45 +11,11 @@ import logging
 
 from backend.config import supabase_admin_client
 from backend.dependencies import verify_token, get_manager_id
+from backend.services.enrichment_service import enrich_manager_earnings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/manager-earnings", tags=["manager-earnings"])
-
-
-def _enrich_earning(earning: dict) -> dict:
-    """Add manager_name, contractor_name, client_name to earning."""
-    enriched = dict(earning)
-
-    # Manager name
-    if earning.get("manager_id"):
-        mgr = supabase_admin_client.table("managers").select(
-            "first_name, last_name"
-        ).eq("id", earning["manager_id"]).execute()
-        if mgr.data:
-            enriched["manager_name"] = f"{mgr.data[0]['first_name']} {mgr.data[0]['last_name']}"
-
-    # Contractor + client from contractor_assignment
-    if earning.get("contractor_assignment_id"):
-        ca = supabase_admin_client.table("contractor_assignments").select(
-            "contractor_id, client_company_id"
-        ).eq("id", earning["contractor_assignment_id"]).execute()
-
-        if ca.data:
-            contractor = supabase_admin_client.table("contractors").select(
-                "first_name, last_name"
-            ).eq("id", ca.data[0]["contractor_id"]).execute()
-            if contractor.data:
-                c = contractor.data[0]
-                enriched["contractor_name"] = f"{c['first_name']} {c['last_name']}"
-
-            client = supabase_admin_client.table("client_companies").select(
-                "name"
-            ).eq("id", ca.data[0]["client_company_id"]).execute()
-            if client.data:
-                enriched["client_name"] = client.data[0]["name"]
-
-    return enriched
 
 
 @router.get("/summary")
@@ -144,7 +110,7 @@ async def list_manager_earnings(
 
         result = query.order("pay_period_end", desc=True).limit(limit).execute()
 
-        return [_enrich_earning(e) for e in (result.data or [])]
+        return enrich_manager_earnings(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list manager earnings: {str(e)}")
@@ -178,7 +144,7 @@ async def get_manager_earning(
         elif role != "admin":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-        return _enrich_earning(earning)
+        return enrich_manager_earnings([earning])[0]
 
     except HTTPException:
         raise

@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
 import { AlertCircle, DollarSign, Users, CheckCircle2, X, CreditCard } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/table-skeleton'
 import type { EarningWithDetails } from '@/lib/types/earning'
 
 // Shared unpaid earnings UI
@@ -195,9 +196,7 @@ function UnpaidEarningsUI({
 
       {/* Earnings Table */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-        </div>
+        <TableSkeleton columns={8} rows={5} />
       ) : error ? (
         <Card>
           <CardContent className="py-12 text-center">

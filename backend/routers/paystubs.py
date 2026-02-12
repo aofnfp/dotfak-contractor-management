@@ -18,6 +18,7 @@ from parsers import get_parser, AVAILABLE_PARSERS
 
 from backend.config import supabase_admin_client
 from backend.dependencies import require_admin
+from backend.services.enrichment_service import enrich_paystubs
 from backend.services import PaystubService, calculate_contractor_earnings, BankAccountService
 from backend.services.manager_earnings_service import calculate_manager_earnings
 from backend.schemas import (
@@ -458,11 +459,8 @@ async def list_paystubs(
             except Exception as split_err:
                 logger.warning(f"Failed to fetch account splits: {split_err}")
 
-        # Enrich paystubs with contractor and client details
-        enriched_paystubs = []
+        # Local computation: total_hours + account splits (no extra DB queries)
         for paystub in result.data or []:
-            enriched = dict(paystub)
-
             # Compute total hours from earnings in paystub_data
             # Exclude supplemental lines that duplicate hours (Premium, Differential, GTL, Gross Up)
             paystub_data = paystub.get('paystub_data') or {}
@@ -471,42 +469,15 @@ async def list_paystubs(
                 float(e.get('hours') or 0) for e in earnings_list
                 if not _is_supplemental_earning(e.get('description', ''))
             )
-            enriched['total_hours'] = total_hours if total_hours > 0 else None
+            paystub['total_hours'] = total_hours if total_hours > 0 else None
 
             # Add account split amounts (contractor vs admin)
             splits = splits_by_paystub.get(paystub['id'])
-            enriched['contractor_amount'] = splits['contractor'] if splits else None
-            enriched['admin_amount'] = splits['admin'] if splits else None
+            paystub['contractor_amount'] = splits['contractor'] if splits else None
+            paystub['admin_amount'] = splits['admin'] if splits else None
 
-            # Add contractor details
-            if paystub.get('contractor_assignment_id'):
-                assignment = supabase_admin_client.table("contractor_assignments").select(
-                    "contractor_id"
-                ).eq("id", paystub['contractor_assignment_id']).execute()
-
-                if assignment.data:
-                    contractor = supabase_admin_client.table("contractors").select(
-                        "first_name, last_name, contractor_code"
-                    ).eq("id", assignment.data[0]['contractor_id']).execute()
-
-                    if contractor.data:
-                        c = contractor.data[0]
-                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
-                        enriched['contractor_code'] = c['contractor_code']
-
-            # Add client details
-            if paystub.get('client_company_id'):
-                client = supabase_admin_client.table("client_companies").select(
-                    "name, code"
-                ).eq("id", paystub['client_company_id']).execute()
-
-                if client.data:
-                    enriched['client_name'] = client.data[0]['name']
-                    enriched['client_code'] = client.data[0]['code']
-
-            enriched_paystubs.append(enriched)
-
-        return enriched_paystubs
+        # Batch enrich contractor/client names (replaces N+1 per-row queries)
+        return enrich_paystubs(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list paystubs: {str(e)}")

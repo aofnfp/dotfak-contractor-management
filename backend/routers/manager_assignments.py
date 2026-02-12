@@ -10,6 +10,7 @@ import logging
 
 from backend.config import supabase_admin_client
 from backend.dependencies import require_admin, verify_token, get_manager_id
+from backend.services.enrichment_service import enrich_manager_assignments
 from backend.schemas import (
     ManagerAssignmentCreate,
     ManagerAssignmentUpdate,
@@ -23,43 +24,6 @@ from backend.services.manager_earnings_service import calculate_manager_earnings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/manager-assignments", tags=["manager-assignments"])
-
-
-def _enrich_assignment(assignment: dict) -> dict:
-    """Add manager_name, contractor_name, client_name to assignment."""
-    enriched = dict(assignment)
-
-    # Manager name
-    if assignment.get("manager_id"):
-        mgr = supabase_admin_client.table("managers").select(
-            "first_name, last_name"
-        ).eq("id", assignment["manager_id"]).execute()
-        if mgr.data:
-            enriched["manager_name"] = f"{mgr.data[0]['first_name']} {mgr.data[0]['last_name']}"
-
-    # Contractor + client from contractor_assignment
-    if assignment.get("contractor_assignment_id"):
-        ca = supabase_admin_client.table("contractor_assignments").select(
-            "contractor_id, client_company_id"
-        ).eq("id", assignment["contractor_assignment_id"]).execute()
-
-        if ca.data:
-            # Contractor name
-            contractor = supabase_admin_client.table("contractors").select(
-                "first_name, last_name, contractor_code"
-            ).eq("id", ca.data[0]["contractor_id"]).execute()
-            if contractor.data:
-                c = contractor.data[0]
-                enriched["contractor_name"] = f"{c['first_name']} {c['last_name']}"
-
-            # Client name
-            client = supabase_admin_client.table("client_companies").select(
-                "name"
-            ).eq("id", ca.data[0]["client_company_id"]).execute()
-            if client.data:
-                enriched["client_name"] = client.data[0]["name"]
-
-    return enriched
 
 
 @router.get("")
@@ -94,7 +58,7 @@ async def list_manager_assignments(
 
         result = query.order("created_at", desc=True).execute()
 
-        return [_enrich_assignment(a) for a in (result.data or [])]
+        return enrich_manager_assignments(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list manager assignments: {str(e)}")
@@ -152,7 +116,7 @@ async def create_manager_assignment(
                 f"manager_assignment={created['id']}, paystubs={len(paystubs_result.data or [])}"
             )
 
-        return _enrich_assignment(created)
+        return enrich_manager_assignments([created])[0]
 
     except HTTPException:
         raise
@@ -207,7 +171,7 @@ async def end_manager_assignment(
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to end manager assignment")
 
         logger.info(f"Manager assignment ended: {assignment_id}, reason={request.end_reason}")
-        return _enrich_assignment(result.data[0])
+        return enrich_manager_assignments([result.data[0]])[0]
 
     except HTTPException:
         raise
@@ -252,7 +216,7 @@ async def update_manager_assignment(
             )
 
         logger.info(f"Manager assignment updated: {assignment_id}")
-        return _enrich_assignment(result.data[0])
+        return enrich_manager_assignments([result.data[0]])[0]
 
     except HTTPException:
         raise

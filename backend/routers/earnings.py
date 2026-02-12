@@ -13,6 +13,7 @@ import logging
 from backend.config import supabase_admin_client
 from backend.dependencies import require_admin, verify_token, get_contractor_id
 from backend.schemas import EarningsResponse, EarningsDetailResponse
+from backend.services.enrichment_service import enrich_earnings
 
 logger = logging.getLogger(__name__)
 
@@ -93,52 +94,7 @@ async def list_earnings(
 
         result = query.order("pay_period_begin", desc=True).limit(limit).execute()
 
-        # Enrich earnings with contractor and client details
-        enriched_earnings = []
-        for earning in result.data or []:
-            enriched = dict(earning)
-
-            # Add contractor details
-            if earning.get('contractor_assignment_id'):
-                assignment = supabase_admin_client.table("contractor_assignments").select(
-                    "contractor_id, client_company_id"
-                ).eq("id", earning['contractor_assignment_id']).execute()
-
-                if assignment.data:
-                    enriched['contractor_id'] = assignment.data[0]['contractor_id']
-
-                    # Get contractor info
-                    contractor = supabase_admin_client.table("contractors").select(
-                        "first_name, last_name, contractor_code"
-                    ).eq("id", assignment.data[0]['contractor_id']).execute()
-
-                    if contractor.data:
-                        c = contractor.data[0]
-                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
-                        enriched['contractor_code'] = c['contractor_code']
-
-                    # Get client company info
-                    client = supabase_admin_client.table("client_companies").select(
-                        "name, code"
-                    ).eq("id", assignment.data[0]['client_company_id']).execute()
-
-                    if client.data:
-                        enriched['client_name'] = client.data[0]['name']
-                        enriched['client_code'] = client.data[0]['code']
-
-            # Add paystub info
-            if earning.get('paystub_id'):
-                paystub = supabase_admin_client.table("paystubs").select(
-                    "file_name, check_date"
-                ).eq("id", earning['paystub_id']).execute()
-
-                if paystub.data:
-                    enriched['paystub_file_name'] = paystub.data[0].get('file_name')
-                    enriched['paystub_check_date'] = paystub.data[0].get('check_date')
-
-            enriched_earnings.append(enriched)
-
-        return enriched_earnings
+        return enrich_earnings(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list earnings: {str(e)}")
@@ -228,52 +184,7 @@ async def list_unpaid_earnings(
             "pay_period_begin", desc=False  # Oldest first (FIFO)
         ).execute()
 
-        # Enrich earnings with contractor and client details
-        enriched_earnings = []
-        for earning in result.data or []:
-            enriched = dict(earning)
-
-            # Add contractor details
-            if earning.get('contractor_assignment_id'):
-                assignment = supabase_admin_client.table("contractor_assignments").select(
-                    "contractor_id, client_company_id"
-                ).eq("id", earning['contractor_assignment_id']).execute()
-
-                if assignment.data:
-                    enriched['contractor_id'] = assignment.data[0]['contractor_id']
-
-                    # Get contractor info
-                    contractor = supabase_admin_client.table("contractors").select(
-                        "first_name, last_name, contractor_code"
-                    ).eq("id", assignment.data[0]['contractor_id']).execute()
-
-                    if contractor.data:
-                        c = contractor.data[0]
-                        enriched['contractor_name'] = f"{c['first_name']} {c['last_name']}"
-                        enriched['contractor_code'] = c['contractor_code']
-
-                    # Get client company info
-                    client = supabase_admin_client.table("client_companies").select(
-                        "name, code"
-                    ).eq("id", assignment.data[0]['client_company_id']).execute()
-
-                    if client.data:
-                        enriched['client_name'] = client.data[0]['name']
-                        enriched['client_code'] = client.data[0]['code']
-
-            # Add paystub info
-            if earning.get('paystub_id'):
-                paystub = supabase_admin_client.table("paystubs").select(
-                    "file_name, check_date"
-                ).eq("id", earning['paystub_id']).execute()
-
-                if paystub.data:
-                    enriched['paystub_file_name'] = paystub.data[0].get('file_name')
-                    enriched['paystub_check_date'] = paystub.data[0].get('check_date')
-
-            enriched_earnings.append(enriched)
-
-        return enriched_earnings
+        return enrich_earnings(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list unpaid earnings: {str(e)}")
@@ -313,44 +224,7 @@ async def get_earning(
                 detail="Earning not found"
             )
 
-        earning = earning_result.data[0]
-
-        # Enrich with contractor + client details
-        if earning.get('contractor_assignment_id'):
-            assignment_result = supabase_admin_client.table("contractor_assignments").select(
-                "contractor_id, client_company_id"
-            ).eq("id", earning["contractor_assignment_id"]).execute()
-
-            if assignment_result.data:
-                a = assignment_result.data[0]
-                earning['contractor_id'] = a['contractor_id']
-                earning['client_company_id'] = a['client_company_id']
-
-                # Get contractor info
-                contractor_result = supabase_admin_client.table("contractors").select(
-                    "first_name, last_name, contractor_code"
-                ).eq("id", a['contractor_id']).execute()
-                if contractor_result.data:
-                    c = contractor_result.data[0]
-                    earning['contractor_name'] = f"{c['first_name']} {c['last_name']}"
-                    earning['contractor_code'] = c['contractor_code']
-
-                # Get client company info
-                client_result = supabase_admin_client.table("client_companies").select(
-                    "name, code"
-                ).eq("id", a['client_company_id']).execute()
-                if client_result.data:
-                    earning['client_name'] = client_result.data[0]['name']
-                    earning['client_code'] = client_result.data[0]['code']
-
-        # Enrich with paystub info
-        if earning.get('paystub_id'):
-            paystub_result = supabase_admin_client.table("paystubs").select(
-                "file_name, check_date"
-            ).eq("id", earning["paystub_id"]).execute()
-            if paystub_result.data:
-                earning['paystub_file_name'] = paystub_result.data[0].get('file_name')
-                earning['paystub_check_date'] = paystub_result.data[0].get('check_date')
+        earning = enrich_earnings(earning_result.data)[0]
 
         # Check authorization for contractors
         if user.get("role") != "admin":

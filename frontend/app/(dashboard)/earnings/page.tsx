@@ -20,6 +20,7 @@ import { formatCurrency } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
 import { DollarSign, CheckCircle2, AlertCircle, Download, CreditCard } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { PaymentStatus, EarningWithDetails, EarningsSummary } from '@/lib/types/earning'
@@ -239,9 +240,7 @@ function EarningsPageUI({
 
       {/* Earnings Table */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-        </div>
+        <TableSkeleton columns={8} rows={5} />
       ) : error ? (
         <Card>
           <CardContent className="py-12 text-center">

@@ -9,6 +9,7 @@ import logging
 
 from backend.config import supabase_admin_client, supabase_client
 from backend.dependencies import require_admin, verify_token, get_contractor_id
+from backend.services.enrichment_service import enrich_assignments
 from datetime import date
 
 from backend.schemas import (
@@ -195,31 +196,7 @@ async def list_assignments(
 
         result = query.order("created_at", desc=True).limit(limit).execute()
 
-        # Fetch and join contractor and client details for each assignment
-        assignments = result.data if result.data else []
-        for assignment in assignments:
-            # Fetch contractor details
-            contractor = supabase_admin_client.table("contractors").select(
-                "first_name, last_name, contractor_code"
-            ).eq("id", assignment["contractor_id"]).execute()
-
-            # Fetch client details
-            client = supabase_admin_client.table("client_companies").select(
-                "name, code"
-            ).eq("id", assignment["client_company_id"]).execute()
-
-            # Add joined data
-            if contractor.data:
-                c = contractor.data[0]
-                assignment["contractor_name"] = f"{c['first_name']} {c['last_name']}"
-                assignment["contractor_code"] = c["contractor_code"]
-
-            if client.data:
-                cl = client.data[0]
-                assignment["client_name"] = cl["name"]
-                assignment["client_code"] = cl["code"]
-
-        return assignments
+        return enrich_assignments(result.data or [])
 
     except Exception as e:
         logger.error(f"Failed to list assignments: {str(e)}")
@@ -339,26 +316,7 @@ async def get_assignment(
                     detail="You can only view your own assignments"
                 )
 
-        # Fetch contractor details
-        contractor = supabase_admin_client.table("contractors").select(
-            "first_name, last_name, contractor_code"
-        ).eq("id", assignment["contractor_id"]).execute()
-
-        # Fetch client details
-        client = supabase_admin_client.table("client_companies").select(
-            "name, code"
-        ).eq("id", assignment["client_company_id"]).execute()
-
-        # Add joined data
-        if contractor.data:
-            c = contractor.data[0]
-            assignment["contractor_name"] = f"{c['first_name']} {c['last_name']}"
-            assignment["contractor_code"] = c["contractor_code"]
-
-        if client.data:
-            cl = client.data[0]
-            assignment["client_name"] = cl["name"]
-            assignment["client_code"] = cl["code"]
+        assignment = enrich_assignments([assignment])[0]
 
         return assignment
 

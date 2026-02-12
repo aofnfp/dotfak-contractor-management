@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { DollarSign, CreditCard, TrendingUp, Download, Trash2, Users } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/table-skeleton'
 
 /**
  * Manager Payments View (for manager role — read-only)
@@ -57,9 +58,7 @@ function ManagerPaymentsView() {
 
       {/* Payments Table */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-        </div>
+        <TableSkeleton columns={5} rows={5} />
       ) : error ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -240,9 +239,7 @@ function ContractorPaymentsTab({ isAdmin }: { isAdmin: boolean }) {
 
       {/* Payments Table */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-        </div>
+        <TableSkeleton columns={7} rows={5} />
       ) : error ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -307,9 +304,7 @@ function ManagerPaymentsTab() {
 
       {/* Payments Table */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta"></div>
-        </div>
+        <TableSkeleton columns={6} rows={5} />
       ) : error ? (
         <Card>
           <CardContent className="py-12 text-center">

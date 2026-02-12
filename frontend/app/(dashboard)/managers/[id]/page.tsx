@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor, Plus } from 'lucide-react'
+import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor, Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -70,7 +70,7 @@ export default function ManagerDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cta mx-auto"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-cta mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading manager...</p>
         </div>
       </div>
