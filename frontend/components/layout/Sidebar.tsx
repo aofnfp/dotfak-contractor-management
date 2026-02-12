@@ -1,11 +1,11 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigationConfig } from '@/lib/config/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { Code2 } from 'lucide-react'
 
 /**
  * Sidebar Component
@@ -22,7 +22,7 @@ export function Sidebar() {
     <div className="flex h-full w-64 flex-col bg-secondary border-r border-border">
       {/* Logo / Branding */}
       <div className="flex h-16 items-center gap-2 border-b border-gold/30 px-6">
-        <Code2 className="h-6 w-6 text-gold" />
+        <Image src="/griffin-icon.png" alt="DotFak" width={28} height={28} className="rounded-sm" />
         <div className="flex flex-col">
           <span className="text-sm font-heading font-semibold text-gold tracking-[0.15em] uppercase">
             DOTFAK

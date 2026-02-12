@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigationConfig } from '@/lib/config/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { Code2, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MobileNavProps {
@@ -59,7 +60,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
           {/* Header */}
           <div className="flex h-16 items-center justify-between border-b border-gold/30 px-6">
             <div className="flex items-center gap-2">
-              <Code2 className="h-6 w-6 text-gold" />
+              <Image src="/griffin-icon.png" alt="DotFak" width={28} height={28} className="rounded-sm" />
               <div className="flex flex-col">
                 <span className="text-sm font-heading font-semibold text-gold tracking-[0.15em] uppercase">
                   DOTFAK
