@@ -33,13 +33,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md border-secondary">
+    <div className="flex min-h-screen items-center justify-center bg-background bg-[radial-gradient(ellipse_at_center,rgba(201,168,76,0.06)_0%,transparent_70%)] p-4">
+      <Card className="w-full max-w-md border-gold/30">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-heading text-center">
+          <CardTitle className="text-2xl font-heading text-center text-gold tracking-[0.08em]">
             DotFak Contractor Management
           </CardTitle>
-          <CardDescription className="text-center text-muted-foreground">
+          <CardDescription className="text-center text-muted-foreground font-display italic">
             Enter your credentials to access the platform
           </CardDescription>
         </CardHeader>

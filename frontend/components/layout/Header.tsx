@@ -31,7 +31,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-secondary px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-gold/30 bg-secondary px-6">
       {/* Mobile Menu Button */}
       <Button
         variant="ghost"
@@ -52,13 +52,13 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-11 w-11 rounded-full border-2 border-border hover:border-cta cursor-pointer"
+            className="relative h-11 w-11 rounded-full border-2 border-border hover:border-gold cursor-pointer"
           >
             <User className="h-4 w-4" />
             <span className="sr-only">Open user menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-secondary border-border">
+        <DropdownMenuContent align="end" className="w-56 bg-secondary border-gold/30">
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none text-text">

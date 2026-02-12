@@ -12,6 +12,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from backend.config import supabase_admin_client
+from backend.constants.brand import COMPANY_LOGO_BASE64
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class ContractService:
             # Metadata
             "contract_date": datetime.utcnow().strftime("%B %d, %Y"),
             "contract_year": datetime.utcnow().strftime("%Y"),
+
+            # Branding
+            "company_logo": COMPANY_LOGO_BASE64,
         }
 
     @staticmethod
@@ -218,6 +222,7 @@ class ContractService:
             "jurisdiction_venue": "arbitration in Lagos, Nigeria, in accordance with the Arbitration and Conciliation Act" if manager.get("country", "NG") != "US" else "the courts located in the State of Texas, USA",
             "contract_date": datetime.utcnow().strftime("%B %d, %Y"),
             "contract_year": datetime.utcnow().strftime("%Y"),
+            "company_logo": COMPANY_LOGO_BASE64,
         }
 
         # Render HTML

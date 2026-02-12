@@ -57,12 +57,12 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
       <div className="fixed inset-y-0 left-0 z-50 w-72 bg-secondary border-r border-border shadow-xl md:hidden">
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center justify-between border-b border-border px-6">
+          <div className="flex h-16 items-center justify-between border-b border-gold/30 px-6">
             <div className="flex items-center gap-2">
-              <Code2 className="h-6 w-6 text-cta" />
+              <Code2 className="h-6 w-6 text-gold" />
               <div className="flex flex-col">
-                <span className="text-sm font-heading font-semibold text-text">
-                  DotFak
+                <span className="text-sm font-heading font-semibold text-gold tracking-[0.15em] uppercase">
+                  DOTFAK
                 </span>
                 <span className="text-xs text-muted-foreground">
                   Contractor Mgmt
@@ -91,7 +91,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
 
                 return (
                 <div key={section.title}>
-                  <h3 className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <h3 className="mb-2 px-3 text-xs font-semibold text-gold-dark uppercase tracking-wider">
                     {section.title}
                   </h3>
                   <div className="space-y-1">
@@ -129,9 +129,9 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-gold/30 p-4">
             <div className="rounded-lg bg-primary/50 p-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gold-dark">
                 DotFak Group LLC
               </p>
               <p className="text-xs text-muted-foreground/60 mt-1">

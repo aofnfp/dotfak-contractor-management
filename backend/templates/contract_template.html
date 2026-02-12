@@ -4,11 +4,14 @@
 <meta charset="UTF-8">
 <style>
   @page { size: letter; margin: 1in; }
-  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-height: 1.6; color: #222; }
-  h1 { text-align: center; font-size: 18pt; margin-bottom: 4px; color: #1a1a2e; }
-  h2 { font-size: 13pt; margin-top: 24px; margin-bottom: 8px; color: #1a1a2e; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-  .header { text-align: center; margin-bottom: 30px; }
-  .header .subtitle { font-size: 11pt; color: #555; margin-top: 0; }
+  body { font-family: 'Georgia', 'Times New Roman', serif; font-size: 12pt; line-height: 1.6; color: #1a1a1a; }
+  h1 { text-align: center; font-size: 16pt; margin-bottom: 4px; color: #1a1a1a; letter-spacing: 0.05em; }
+  h2 { font-size: 12pt; margin-top: 24px; margin-bottom: 8px; color: #8B7332; border-bottom: 1px solid #C9A84C; padding-bottom: 4px; letter-spacing: 0.03em; text-transform: uppercase; }
+  .letterhead { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #C9A84C; }
+  .letterhead img { width: 60px; height: 60px; margin-bottom: 8px; }
+  .letterhead .company-name { font-size: 14pt; color: #8B7332; letter-spacing: 0.15em; margin: 4px 0 2px 0; text-transform: uppercase; }
+  .letterhead .tagline { font-size: 8pt; color: #999; letter-spacing: 0.1em; margin: 0 0 12px 0; text-transform: uppercase; }
+  .doc-title { text-align: center; margin-bottom: 4px; }
   .parties { margin: 20px 0; }
   .parties p { margin: 4px 0; }
   .section { margin-bottom: 16px; }
@@ -19,16 +22,22 @@
   .sig-party { width: 45%; }
   .sig-party .sig-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 4px; }
   .sig-party .sig-placeholder { min-height: 60px; }
-  .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #999; }
+  .footer { margin-top: 40px; text-align: center; font-size: 8pt; color: #999; border-top: 1px solid #C9A84C; padding-top: 12px; }
+  .footer img { width: 24px; height: 24px; vertical-align: middle; margin-right: 6px; opacity: 0.6; }
   ul { margin: 6px 0; padding-left: 24px; }
   li { margin-bottom: 4px; }
 </style>
 </head>
 <body>
 
-<div class="header">
+<div class="letterhead">
+  <img src="{{ company_logo }}" alt="DotFak" />
+  <p class="company-name">Dotfak Group LLC</p>
+  <p class="tagline">Built to Lead. Designed to Last.</p>
+</div>
+
+<div class="doc-title">
   <h1>INDEPENDENT CONTRACTOR AGREEMENT</h1>
-  <p class="subtitle">Dotfak Group LLC</p>
 </div>
 
 <p style="text-align: center; font-size: 11pt; color: #555;">
@@ -253,7 +262,7 @@
 </div>
 
 <div class="footer">
-  <p>{{ company_name }} &bull; {{ company_address }} &bull; {{ contract_year }}</p>
+  <p><img src="{{ company_logo }}" alt="" />{{ company_name }} &bull; {{ company_address }} &bull; {{ contract_year }}</p>
 </div>
 
 </body>

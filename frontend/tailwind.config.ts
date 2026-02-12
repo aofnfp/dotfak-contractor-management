@@ -19,6 +19,11 @@ const config: Config = {
         input: '#1E293B',
         ring: '#22C55E',
         foreground: '#F8FAFC',
+        gold: {
+          DEFAULT: '#C9A84C',
+          light: '#E2C97E',
+          dark: '#8B7332',
+        },
         muted: {
           DEFAULT: '#1E293B',
           foreground: '#A8B5CC', // Updated for WCAG AA compliance (4.5:1 contrast ratio)
@@ -41,9 +46,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        heading: ['Fira Code', 'monospace'],
-        body: ['Fira Sans', 'sans-serif'],
-        sans: ['Fira Sans', 'sans-serif'],
+        heading: ['Cinzel', 'serif'],
+        display: ['Cormorant Garamond', 'serif'],
+        body: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
         mono: ['Fira Code', 'monospace'],
       },
       spacing: {
@@ -65,6 +71,15 @@ const config: Config = {
         lg: '12px',
         md: '8px',
         sm: '4px',
+      },
+      keyframes: {
+        shimmer: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 3s ease-in-out infinite',
       },
     },
   },
