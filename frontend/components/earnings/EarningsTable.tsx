@@ -163,7 +163,7 @@ export const EarningsTable = memo(function EarningsTable({
 
                     <TableCell>
                       <Link
-                        href={`/contractors/${earning.contractor_assignment_id}`}
+                        href={`/contractors/${earning.contractor_id}`}
                         className="hover:underline"
                       >
                         <div className="flex items-center gap-2">

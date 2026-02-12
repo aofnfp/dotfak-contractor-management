@@ -147,10 +147,10 @@ async def upload_paystub_with_earnings(
                 pay_period_end = paystub_data.get('header', {}).get('pay_period', {}).get('end')
                 employee_id = paystub_data.get('header', {}).get('employee', {}).get('id')
 
-                print(f"🔍 Processing paystub {idx}/{len(paystubs)}: Period {pay_period_begin} to {pay_period_end}, Employee: {employee_id}")
+                logger.info(f"Processing paystub {idx}/{len(paystubs)}: Period {pay_period_begin} to {pay_period_end}, Employee: {employee_id}")
 
                 if not pay_period_begin:
-                    print(f"⚠️  Paystub {idx}: Missing pay period - skipping")
+                    logger.warning(f"Paystub {idx}: Missing pay period - skipping")
                     errors.append(f"Paystub {idx}: Missing pay period")
                     skipped_count += 1
                     continue
@@ -174,12 +174,12 @@ async def upload_paystub_with_earnings(
                         )
 
                         if is_duplicate:
-                            print(f"⏭️  Paystub {idx}: Duplicate found - same period and gross pay (${current_gross_pay}) - skipping")
+                            logger.info(f"Paystub {idx}: Duplicate found - same period and gross pay (${current_gross_pay}) - skipping")
                             errors.append(f"Paystub {idx}: Duplicate - same period and gross pay ${current_gross_pay}")
                             skipped_count += 1
                             continue
                         else:
-                            print(f"ℹ️  Paystub {idx}: Same period but different gross pay (${current_gross_pay}) - saving as separate record")
+                            logger.info(f"Paystub {idx}: Same period but different gross pay (${current_gross_pay}) - saving as separate record")
 
                 assignment = None
                 auto_matched = False
@@ -193,7 +193,7 @@ async def upload_paystub_with_earnings(
                     ).eq("client_company_id", client_company_id).execute()
 
                     if not assignment_result.data:
-                        print(f"⚠️  Paystub {idx}: Contractor assignment not found - skipping")
+                        logger.warning(f"Paystub {idx}: Contractor assignment not found - skipping")
                         errors.append(f"Paystub {idx}: Contractor assignment not found")
                         skipped_count += 1
                         continue
@@ -280,10 +280,10 @@ async def upload_paystub_with_earnings(
                         errors.append(f"Paystub {idx}: {str(e)}")
 
                 processed_paystubs.append(paystub_with_details)
-                print(f"✅ Paystub {idx}/{len(paystubs)} saved: {pay_period_begin} to {pay_period_end}")
+                logger.info(f"Paystub {idx}/{len(paystubs)} saved: {pay_period_begin} to {pay_period_end}")
 
             except Exception as e:
-                print(f"❌ Paystub {idx} failed: {str(e)}")
+                logger.error(f"Paystub {idx} failed: {str(e)}")
                 errors.append(f"Paystub {idx}: {str(e)}")
                 continue
 

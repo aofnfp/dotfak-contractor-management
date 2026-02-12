@@ -22,7 +22,7 @@ class SignupRequest(BaseModel):
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    role: str = Field(default="contractor", description="User role: admin or contractor")
+    role: str = Field(default="contractor", pattern="^(contractor|manager)$", description="User role: contractor or manager")
 
     class Config:
         json_schema_extra = {

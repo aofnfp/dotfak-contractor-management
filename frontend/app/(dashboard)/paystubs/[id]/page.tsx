@@ -188,7 +188,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
                   variant="outline"
                   size="sm"
                   className="mt-2"
-                  onClick={() => {/* TODO: Implement manual assignment */}}
+                  onClick={() => router.push('/assignments/new')}
                 >
                   Assign Contractor
                 </Button>
