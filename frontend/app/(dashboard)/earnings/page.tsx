@@ -11,18 +11,54 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EarningsTable } from '@/components/earnings/EarningsTable'
-import { useEarnings, useEarningsSummary } from '@/lib/hooks/useEarnings'
-import { useManagerEarnings, useManagerEarningsSummary } from '@/lib/hooks/useManagerEarnings'
+import { useEarnings } from '@/lib/hooks/useEarnings'
+import { useManagerEarnings } from '@/lib/hooks/useManagerEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
-import { normalizeManagerEarnings, normalizeManagerSummary } from '@/lib/utils/normalize-earnings'
+import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
 import { DollarSign, CheckCircle2, AlertCircle, Download, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { PaymentStatus, EarningWithDetails, EarningsSummary } from '@/lib/types/earning'
+
+function computeSummaryFromEarnings(earnings: EarningWithDetails[]): EarningsSummary {
+  let total_regular = 0
+  let total_bonus = 0
+  let total_earnings = 0
+  let total_paid = 0
+  let total_pending = 0
+  let count_unpaid = 0
+  let count_partially_paid = 0
+  let count_paid = 0
+  let count_with_bonus = 0
+
+  for (const e of earnings) {
+    total_regular += e.contractor_regular_earnings || 0
+    total_bonus += e.contractor_bonus_share || 0
+    total_earnings += e.contractor_total_earnings || 0
+    total_paid += e.amount_paid || 0
+    total_pending += e.amount_pending || 0
+    if (e.payment_status === 'unpaid') count_unpaid++
+    else if (e.payment_status === 'partially_paid') count_partially_paid++
+    else if (e.payment_status === 'paid') count_paid++
+    if ((e.contractor_bonus_share || 0) > 0) count_with_bonus++
+  }
+
+  return {
+    total_regular,
+    total_bonus,
+    total_earnings,
+    total_paid,
+    total_pending,
+    count_unpaid,
+    count_partially_paid,
+    count_paid,
+    count_with_bonus,
+  }
+}
 
 // Shared UI that both roles use — same cards, same table, same export
 function EarningsPageUI({
@@ -225,7 +261,6 @@ function ManagerEarningsPage() {
   const [staffFilter, setStaffFilter] = useState<string>('all')
 
   const { data: rawEarnings, isLoading, error } = useManagerEarnings()
-  const { data: rawSummary, isLoading: summaryLoading } = useManagerEarningsSummary()
 
   const allEarnings = useMemo(
     () => rawEarnings ? normalizeManagerEarnings(rawEarnings) : undefined,
@@ -256,8 +291,8 @@ function ManagerEarningsPage() {
   }, [allEarnings, paymentStatus, staffFilter])
 
   const summary = useMemo(
-    () => rawSummary ? normalizeManagerSummary(rawSummary) : undefined,
-    [rawSummary]
+    () => earnings ? computeSummaryFromEarnings(earnings) : undefined,
+    [earnings]
   )
 
   const filterSlot = (
@@ -312,7 +347,7 @@ function ManagerEarningsPage() {
       isLoading={isLoading}
       error={error}
       summary={summary}
-      summaryLoading={summaryLoading}
+      summaryLoading={isLoading}
       isAdmin={false}
       isManager={true}
       headerDescription="Your earnings from managed staff paystubs"
@@ -334,9 +369,13 @@ function ContractorEarningsPage({ isAdmin }: { isAdmin: boolean }) {
   }
 
   const { data: earnings, isLoading, error } = useEarnings(filters)
-  const { data: summary, isLoading: summaryLoading } = useEarningsSummary(isAdmin)
   const { data: contractors } = useContractors(isAdmin)
   const { data: clients } = useClients(isAdmin)
+
+  const summary = useMemo(
+    () => earnings ? computeSummaryFromEarnings(earnings) : undefined,
+    [earnings]
+  )
 
   const filterSlot = (
     <Card>
@@ -412,7 +451,7 @@ function ContractorEarningsPage({ isAdmin }: { isAdmin: boolean }) {
       isLoading={isLoading}
       error={error}
       summary={summary}
-      summaryLoading={summaryLoading}
+      summaryLoading={isLoading}
       isAdmin={isAdmin}
       isManager={false}
       headerDescription="View and manage contractor earnings from paystubs"
