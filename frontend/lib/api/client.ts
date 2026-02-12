@@ -69,24 +69,90 @@ apiClient.interceptors.request.use(
 )
 
 /**
+ * Token Refresh State
+ * Prevents concurrent refresh attempts and queues retries
+ */
+let isRefreshing = false
+let refreshQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: any) => void
+}> = []
+
+function processQueue(error: any, token: string | null) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (token) resolve(token)
+    else reject(error)
+  })
+  refreshQueue = []
+}
+
+/**
  * Response Interceptor
- * Handles errors gracefully, especially 401 Unauthorized
+ * On 401: attempts token refresh before giving up
  */
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    // Handle 401 Unauthorized - session expired or invalid token
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        // Clear cached token and localStorage
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (typeof window === 'undefined') return Promise.reject(error)
+
+      const refreshToken = localStorage.getItem('refresh_token')
+
+      // No refresh token available — clear session
+      if (!refreshToken) {
         updateCachedToken(null)
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
-
-        // Only redirect if not already on login page
-        if (!window.location.pathname.includes('/login')) {
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/onboard')) {
           window.location.href = '/login'
         }
+        return Promise.reject(error)
+      }
+
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          refreshQueue.push({ resolve, reject })
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return apiClient(originalRequest)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const baseURL = apiClient.defaults.baseURL || ''
+        const res = await axios.post(`${baseURL}/auth/refresh`, null, {
+          params: { refresh_token: refreshToken },
+        })
+
+        const newAccess = res.data?.session?.access_token
+        const newRefresh = res.data?.session?.refresh_token
+
+        if (!newAccess) throw new Error('No access token in refresh response')
+
+        updateCachedToken(newAccess)
+        if (newRefresh) localStorage.setItem('refresh_token', newRefresh)
+
+        processQueue(null, newAccess)
+
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`
+        return apiClient(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        updateCachedToken(null)
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/onboard')) {
+          window.location.href = '/login'
+        }
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
       }
     }
 
