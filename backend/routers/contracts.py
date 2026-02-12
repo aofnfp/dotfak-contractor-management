@@ -233,7 +233,7 @@ async def sign_contract(
             manager_id = get_manager_id(user["user_id"])
             if contract.get("manager_id") != manager_id:
                 raise HTTPException(status_code=403, detail="This contract is not assigned to you")
-            signer_type = "contractor"
+            signer_type = "manager"
             signer_id = manager_id
         else:
             if contract["status"] != "pending_contractor":
@@ -261,7 +261,7 @@ async def sign_contract(
         # Advance contract status
         is_manager_contract = contract.get("manager_id") and not contract.get("contractor_id")
 
-        if signer_type == "contractor":
+        if signer_type in ("contractor", "manager"):
             supabase_admin_client.table("contracts").update({
                 "status": "pending_admin"
             }).eq("id", contract_id).execute()

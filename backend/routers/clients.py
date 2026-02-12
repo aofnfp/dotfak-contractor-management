@@ -8,7 +8,7 @@ from typing import List
 import logging
 
 from backend.config import supabase_admin_client
-from backend.dependencies import verify_token
+from backend.dependencies import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 
 @router.get("", response_model=List[dict])
 async def list_clients(
-    user: dict = Depends(verify_token)
+    user: dict = Depends(require_admin)
 ):
     """
     List all client companies.
@@ -44,7 +44,7 @@ async def list_clients(
 @router.get("/{client_id}", response_model=dict)
 async def get_client(
     client_id: str,
-    user: dict = Depends(verify_token)
+    user: dict = Depends(require_admin)
 ):
     """
     Get client company by ID.

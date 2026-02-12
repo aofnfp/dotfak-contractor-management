@@ -88,7 +88,7 @@ async def list_devices(
                 return []
             query = query.in_("manager_assignment_id", ma_ids)
         elif role != "admin":
-            return []
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         if status_filter:
             query = query.eq("status", status_filter)

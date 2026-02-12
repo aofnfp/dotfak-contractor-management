@@ -3,12 +3,13 @@
 Authentication router - handles user signup and login via Supabase Auth.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any
 import logging
 
 from backend.config import supabase_client, supabase_admin_client, FRONTEND_URL
+from backend.dependencies import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -283,24 +284,16 @@ async def refresh_token(refresh_token: str):
 
 
 @router.get("/me")
-async def get_current_user_info():
+async def get_current_user_info(user: dict = Depends(verify_token)):
     """
     Get current user information.
 
     Protected endpoint - requires valid JWT token in Authorization header.
-    Use this to verify token validity and get user details.
-
-    Returns:
-        Current user information
-
-    Note: This endpoint will be protected by the verify_token dependency
-    when integrated into main.py
     """
-    # This endpoint needs to be protected with verify_token dependency
-    # For now, return a placeholder response
     return {
-        "message": "This endpoint requires authentication. "
-                   "Add Depends(verify_token) to protect this route."
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "role": user["role"],
     }
 
 

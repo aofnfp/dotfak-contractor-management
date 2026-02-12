@@ -51,7 +51,7 @@ async def list_manager_assignments(
             if manager_id:
                 query = query.eq("manager_id", manager_id)
         else:
-            return []
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         if is_active is not None:
             query = query.eq("is_active", is_active)
