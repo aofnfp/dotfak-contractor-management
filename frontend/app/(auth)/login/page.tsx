@@ -87,9 +87,8 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link href="/signup" className="text-cta hover:underline">
-              Sign up
+            <Link href="/forgot-password" className="text-cta hover:underline">
+              Forgot password?
             </Link>
           </div>
         </CardContent>

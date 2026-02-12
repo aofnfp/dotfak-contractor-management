@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any
 import logging
 
-from backend.config import supabase_client, supabase_admin_client
+from backend.config import supabase_client, supabase_admin_client, FRONTEND_URL
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,17 @@ class LoginRequest(BaseModel):
                 "password": "SecurePass123!"
             }
         }
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request."""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request (after clicking email link)."""
+    access_token: str
+    new_password: str = Field(..., min_length=8, description="New password, at least 8 characters")
 
 
 class AuthResponse(BaseModel):
@@ -291,3 +302,63 @@ async def get_current_user_info():
         "message": "This endpoint requires authentication. "
                    "Add Depends(verify_token) to protect this route."
     }
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """
+    Send a password reset email. No auth required.
+
+    Always returns success to avoid leaking whether an email exists.
+    """
+    try:
+        redirect_url = f"{FRONTEND_URL}/reset-password"
+        supabase_client.auth.reset_password_email(
+            request.email,
+            {"redirect_to": redirect_url}
+        )
+    except Exception as e:
+        # Log but don't expose to user
+        logger.warning(f"Password reset email error for {request.email}: {e}")
+
+    # Always return success to avoid email enumeration
+    return {"success": True, "message": "If an account exists, a reset email has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """
+    Reset password using the access token from the reset email link. No auth required.
+
+    The access_token comes from the URL hash fragment after Supabase redirects
+    the user to the reset-password page.
+    """
+    try:
+        # Validate the token and get user info
+        user_response = supabase_client.auth.get_user(request.access_token)
+
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset link. Please request a new one."
+            )
+
+        user_id = user_response.user.id
+
+        # Update password via admin client
+        supabase_admin_client.auth.admin.update_user_by_id(
+            user_id,
+            {"password": request.new_password}
+        )
+
+        logger.info(f"Password reset successful for user {user_id}")
+        return {"success": True, "message": "Password has been reset successfully."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to reset password. The link may have expired."
+        )
