@@ -84,6 +84,14 @@ export const assignmentsApi = {
   },
 
   /**
+   * Get assignments for a specific client company
+   */
+  getByClient: async (clientCompanyId: string): Promise<AssignmentWithDetails[]> => {
+    const response = await apiClient.get(`/assignments?client_company_id=${clientCompanyId}`)
+    return response.data
+  },
+
+  /**
    * Create a new assignment
    */
   create: async (data: CreateAssignmentRequest): Promise<Assignment> => {

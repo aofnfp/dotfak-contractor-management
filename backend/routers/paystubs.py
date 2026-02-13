@@ -410,6 +410,108 @@ async def assign_paystub_accounts(
         )
 
 
+@router.patch("/{paystub_id}/assign")
+async def assign_paystub(
+    paystub_id: int,
+    data: dict,
+    user: dict = Depends(require_admin)
+):
+    """
+    Manually assign a paystub to a contractor assignment (admin only).
+
+    Links the paystub, calculates contractor earnings, and triggers manager
+    earnings calculation if applicable.
+    """
+    assignment_id = data.get("contractor_assignment_id")
+    if not assignment_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="contractor_assignment_id is required"
+        )
+
+    try:
+        # Verify paystub exists and is currently unassigned
+        paystub_result = supabase_admin_client.table("paystubs").select("*").eq(
+            "id", paystub_id
+        ).execute()
+
+        if not paystub_result.data:
+            raise HTTPException(status_code=404, detail="Paystub not found")
+
+        paystub = paystub_result.data[0]
+
+        if paystub.get("contractor_assignment_id"):
+            raise HTTPException(
+                status_code=400,
+                detail="Paystub is already assigned to an assignment"
+            )
+
+        # Verify assignment exists
+        assignment_result = supabase_admin_client.table("contractor_assignments").select("*").eq(
+            "id", assignment_id
+        ).execute()
+
+        if not assignment_result.data:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+
+        assignment = assignment_result.data[0]
+
+        # Link paystub to assignment
+        supabase_admin_client.table("paystubs").update({
+            "contractor_assignment_id": assignment_id
+        }).eq("id", paystub_id).execute()
+
+        # Calculate and save contractor earnings
+        paystub_data = paystub.get("paystub_data", {})
+        if paystub_data:
+            try:
+                earnings = calculate_contractor_earnings(paystub_data, assignment)
+                PaystubService.save_earnings(
+                    paystub_id=paystub_id,
+                    contractor_assignment_id=assignment_id,
+                    earnings=earnings,
+                    pay_period_begin=paystub["pay_period_begin"],
+                    pay_period_end=paystub["pay_period_end"],
+                )
+            except Exception as e:
+                logger.warning(f"Earnings calculation failed for paystub {paystub_id}: {e}")
+
+            # Calculate manager earnings if applicable
+            try:
+                calculate_manager_earnings(paystub_id)
+            except Exception:
+                pass
+
+        # Check and sync bank accounts
+        try:
+            BankAccountService.check_paystub_accounts(paystub_id)
+            BankAccountService.sync_earnings_payment_status(paystub_id)
+        except Exception:
+            pass
+
+        logger.info(f"Paystub {paystub_id} manually assigned to assignment {assignment_id}")
+
+        # Return updated paystub (re-fetch with enrichment)
+        updated = supabase_admin_client.table("paystubs").select("*").eq(
+            "id", paystub_id
+        ).execute()
+
+        if updated.data:
+            result = enrich_paystubs(updated.data)[0]
+            return result
+
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to assign paystub: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to assign paystub: {str(e)}"
+        )
+
+
 @router.get("", response_model=List[dict])
 async def list_paystubs(
     contractor_id: Optional[str] = None,

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { usePaystub, useDeletePaystub } from '@/lib/hooks/usePaystubs'
 import { paystubsApi } from '@/lib/api/paystubs'
+import { AssignPaystubDialog } from '@/components/paystubs/AssignPaystubDialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface PaystubDetailPageProps {
@@ -31,6 +32,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
   const deletePaystub = useDeletePaystub()
   const [hasUnassignedAccounts, setHasUnassignedAccounts] = useState(false)
   const [checkingAccounts, setCheckingAccounts] = useState(true)
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
   // Check for unassigned accounts when paystub loads
   useEffect(() => {
@@ -188,7 +190,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
                   variant="outline"
                   size="sm"
                   className="mt-2"
-                  onClick={() => router.push('/assignments/new')}
+                  onClick={() => setAssignDialogOpen(true)}
                 >
                   Assign Contractor
                 </Button>
@@ -358,6 +360,15 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Assign Paystub Dialog */}
+      <AssignPaystubDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        paystubId={id}
+        clientCompanyId={paystub.client_company_id}
+        clientName={paystub.client_name}
+      />
 
       {/* Payment Distribution */}
       {paystub.payment_distribution && paystub.payment_distribution.length > 0 && (
