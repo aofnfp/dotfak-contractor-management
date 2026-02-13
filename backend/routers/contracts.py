@@ -78,6 +78,59 @@ async def list_pending_signatures(user: dict = Depends(require_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/generate")
+async def generate_contract(
+    data: dict,
+    user: dict = Depends(require_admin),
+):
+    """
+    Generate a contract on demand (admin only).
+
+    Accepts either:
+      - contractor_assignment_id: generates a contractor contract
+      - manager_assignment_id: generates a manager contract
+    """
+    try:
+        contractor_assignment_id = data.get("contractor_assignment_id")
+        manager_assignment_id = data.get("manager_assignment_id")
+
+        if not contractor_assignment_id and not manager_assignment_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either contractor_assignment_id or manager_assignment_id",
+            )
+
+        if contractor_assignment_id:
+            ca = supabase_admin_client.table("contractor_assignments").select(
+                "contractor_id"
+            ).eq("id", contractor_assignment_id).execute()
+
+            if not ca.data:
+                raise HTTPException(status_code=404, detail="Contractor assignment not found")
+
+            contract = ContractService.generate_contract(
+                ca.data[0]["contractor_id"], contractor_assignment_id
+            )
+        else:
+            ma = supabase_admin_client.table("manager_assignments").select(
+                "manager_id"
+            ).eq("id", manager_assignment_id).execute()
+
+            if not ma.data:
+                raise HTTPException(status_code=404, detail="Manager assignment not found")
+
+            contract = ContractService.generate_manager_contract(
+                ma.data[0]["manager_id"], manager_assignment_id
+            )
+
+        return _enrich_contract(contract)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate contract: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/generate-amendment")
 async def generate_amendment(
     data: GenerateAmendmentRequest,

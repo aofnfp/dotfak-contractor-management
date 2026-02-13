@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor, Plus, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Phone, MapPin, Mail, Calendar, Users, DollarSign, Monitor, Plus, Loader2, FilePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ import { useDevices } from '@/lib/hooks/useDevices'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { getCountryName } from '@/lib/constants/countries'
 import { AddManagerAssignmentDialog } from '@/components/managers/AddManagerAssignmentDialog'
+import { contractsApi } from '@/lib/api/contracts'
 
 const onboardingLabels: Record<string, string> = {
   not_invited: 'Not Invited',
@@ -48,6 +49,19 @@ export default function ManagerDetailPage() {
   const deleteManager = useDeleteManager()
   const inviteManager = useInviteManager()
   const [showAssignDialog, setShowAssignDialog] = useState(false)
+  const [generatingContractFor, setGeneratingContractFor] = useState<string | null>(null)
+
+  const handleGenerateManagerContract = async (managerAssignmentId: string) => {
+    setGeneratingContractFor(managerAssignmentId)
+    try {
+      const contract = await contractsApi.generate({ manager_assignment_id: managerAssignmentId })
+      router.push(`/contracts/${contract.id}`)
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to generate contract')
+    } finally {
+      setGeneratingContractFor(null)
+    }
+  }
 
   // Filter devices to those belonging to this manager's assignments
   const managerDevices = devices?.filter(d => {
@@ -286,6 +300,7 @@ export default function ManagerDetailPage() {
                     <TableHead className="font-heading">Flat Rate</TableHead>
                     <TableHead className="font-heading">Start Date</TableHead>
                     <TableHead className="font-heading">Status</TableHead>
+                    <TableHead className="font-heading">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -310,6 +325,17 @@ export default function ManagerDetailPage() {
                         >
                           {assignment.is_active ? 'Active' : 'Inactive'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleGenerateManagerContract(assignment.id)}
+                          disabled={generatingContractFor === assignment.id}
+                        >
+                          <FilePlus className="mr-1.5 h-3.5 w-3.5" />
+                          {generatingContractFor === assignment.id ? 'Generating...' : 'Contract'}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -37,4 +37,9 @@ export const contractsApi = {
     const response = await apiClient.post('/contracts/generate-amendment', data)
     return response.data
   },
+
+  generate: async (data: { contractor_assignment_id?: string; manager_assignment_id?: string }): Promise<Contract> => {
+    const response = await apiClient.post('/contracts/generate', data)
+    return response.data
+  },
 }

@@ -2,12 +2,13 @@
 
 import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, ArrowLeft, User, Building2, DollarSign, Calendar, FileText, XCircle } from 'lucide-react'
+import { Pencil, Trash2, ArrowLeft, User, Building2, DollarSign, Calendar, FileText, XCircle, FilePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAssignment, useDeleteAssignment } from '@/lib/hooks/useAssignments'
 import { EndAssignmentDialog } from '@/components/assignments/EndAssignmentDialog'
+import { contractsApi } from '@/lib/api/contracts'
 import { formatCurrency, formatDate, formatEndReason } from '@/lib/utils'
 
 interface AssignmentDetailPageProps {
@@ -22,6 +23,7 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
   const { data: assignment, isLoading, error } = useAssignment(id)
   const deleteAssignment = useDeleteAssignment()
   const [endDialogOpen, setEndDialogOpen] = useState(false)
+  const [generatingContract, setGeneratingContract] = useState(false)
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) {
@@ -32,6 +34,18 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
 
   const handleEdit = () => {
     router.push(`/assignments/${id}/edit`)
+  }
+
+  const handleGenerateContract = async () => {
+    setGeneratingContract(true)
+    try {
+      const contract = await contractsApi.generate({ contractor_assignment_id: id })
+      router.push(`/contracts/${contract.id}`)
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to generate contract')
+    } finally {
+      setGeneratingContract(false)
+    }
   }
 
   if (isLoading) {
@@ -80,6 +94,15 @@ export default function AssignmentDetailPage({ params }: AssignmentDetailPagePro
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleGenerateContract}
+            variant="outline"
+            className="border-border"
+            disabled={generatingContract}
+          >
+            <FilePlus className="mr-2 h-4 w-4" />
+            {generatingContract ? 'Generating...' : 'Generate Contract'}
+          </Button>
           <Button
             onClick={handleEdit}
             variant="outline"

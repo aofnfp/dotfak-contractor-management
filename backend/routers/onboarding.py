@@ -366,16 +366,19 @@ async def complete_profile(
         # Advance onboarding status
         OnboardingService.advance_onboarding_status(contractor_id, "profile_completed")
 
-        # Find active assignment and generate contract
+        # Generate contracts for ALL active assignments (not just the first)
         assignments = supabase_admin_client.table("contractor_assignments").select(
             "id"
-        ).eq("contractor_id", contractor_id).eq("is_active", True).limit(1).execute()
+        ).eq("contractor_id", contractor_id).eq("is_active", True).execute()
 
         contract_id = None
-        if assignments.data:
-            assignment_id = assignments.data[0]["id"]
-            contract = ContractService.generate_contract(contractor_id, assignment_id)
-            contract_id = contract["id"]
+        for a in (assignments.data or []):
+            try:
+                contract = ContractService.generate_contract(contractor_id, a["id"])
+                if contract_id is None:
+                    contract_id = contract["id"]  # First contract for onboarding step
+            except Exception as ce:
+                logger.error(f"Failed to generate contract for assignment {a['id']}: {ce}")
 
         return CompleteProfileResponse(
             success=True,

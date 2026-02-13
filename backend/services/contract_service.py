@@ -130,10 +130,13 @@ class ContractService:
         template = env.get_template("contract_template.html")
         html_content = template.render(**contract_data)
 
-        # Check for existing active contract for this assignment
+        # Check for existing active CONTRACTOR contract for this assignment
+        # Filter by contractor_id to avoid superseding manager contracts on the same assignment
         existing = supabase_admin_client.table("contracts").select("id, version").eq(
             "assignment_id", assignment_id
-        ).eq("contract_type", "original").neq("status", "voided").order(
+        ).eq("contractor_id", contractor_id).eq(
+            "contract_type", "original"
+        ).neq("status", "voided").order(
             "version", desc=True
         ).limit(1).execute()
 
