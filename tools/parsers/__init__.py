@@ -13,6 +13,7 @@ AVAILABLE_PARSERS = {
     "bc_forward": "adp_parser",
     "iqor": "adp_parser",
     "connexus": "connexus_parser",
+    "everise": "everise_parser",
 }
 
 
