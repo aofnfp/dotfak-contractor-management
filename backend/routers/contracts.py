@@ -108,9 +108,25 @@ async def generate_contract(
             if not ca.data:
                 raise HTTPException(status_code=404, detail="Contractor assignment not found")
 
+            contractor_id = ca.data[0]["contractor_id"]
             contract = ContractService.generate_contract(
-                ca.data[0]["contractor_id"], contractor_assignment_id
+                contractor_id, contractor_assignment_id
             )
+
+            # Send email notification to contractor
+            try:
+                c = supabase_admin_client.table("contractors").select(
+                    "first_name, last_name, email"
+                ).eq("id", contractor_id).execute()
+                if c.data and c.data[0].get("email"):
+                    await email_service.send_contract_ready(
+                        to_email=c.data[0]["email"],
+                        contractor_name=f"{c.data[0]['first_name']} {c.data[0]['last_name']}",
+                        login_url=f"{FRONTEND_URL}/contracts/{contract['id']}",
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send contract ready email: {e}")
+
         else:
             ma = supabase_admin_client.table("manager_assignments").select(
                 "manager_id"
@@ -119,9 +135,24 @@ async def generate_contract(
             if not ma.data:
                 raise HTTPException(status_code=404, detail="Manager assignment not found")
 
+            manager_id = ma.data[0]["manager_id"]
             contract = ContractService.generate_manager_contract(
-                ma.data[0]["manager_id"], manager_assignment_id
+                manager_id, manager_assignment_id
             )
+
+            # Send email notification to manager
+            try:
+                m = supabase_admin_client.table("managers").select(
+                    "first_name, last_name, email"
+                ).eq("id", manager_id).execute()
+                if m.data and m.data[0].get("email"):
+                    await email_service.send_contract_ready(
+                        to_email=m.data[0]["email"],
+                        contractor_name=f"{m.data[0]['first_name']} {m.data[0]['last_name']}",
+                        login_url=f"{FRONTEND_URL}/contracts/{contract['id']}",
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send contract ready email: {e}")
 
         return _enrich_contract(contract)
     except HTTPException:
@@ -155,6 +186,21 @@ async def generate_amendment(
             assignment_id=assignment_id,
             changes={"summary": {"old": "Previous terms", "new": data.changes_summary or "Updated terms"}},
         )
+
+        # Send email notification to contractor about the amendment
+        try:
+            if amendment.get("contractor_id"):
+                c = supabase_admin_client.table("contractors").select(
+                    "first_name, last_name, email"
+                ).eq("id", amendment["contractor_id"]).execute()
+                if c.data and c.data[0].get("email"):
+                    await email_service.send_contract_ready(
+                        to_email=c.data[0]["email"],
+                        contractor_name=f"{c.data[0]['first_name']} {c.data[0]['last_name']}",
+                        login_url=f"{FRONTEND_URL}/contracts/{amendment['id']}",
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to send amendment ready email: {e}")
 
         return _enrich_contract(amendment)
     except HTTPException:
