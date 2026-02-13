@@ -52,7 +52,7 @@ export interface ContractListItem {
 
 export interface ContractSignature {
   id: string
-  signer_type: 'contractor' | 'admin'
+  signer_type: 'contractor' | 'admin' | 'manager'
   signer_name: string
   signature_method: SignatureMethod
   signed_at: string

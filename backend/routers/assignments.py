@@ -10,6 +10,8 @@ import logging
 from backend.config import supabase_admin_client, supabase_client
 from backend.dependencies import require_admin, verify_token, get_contractor_id
 from backend.services.enrichment_service import enrich_assignments
+from backend.services import calculate_contractor_earnings, PaystubService
+from backend.services.manager_earnings_service import calculate_manager_earnings
 from datetime import date
 
 from backend.schemas import (
@@ -130,8 +132,18 @@ async def create_assignment(
                 detail="Failed to create assignment"
             )
 
-        logger.info(f"Assignment created: {result.data[0]['id']}")
-        return result.data[0]
+        created_assignment = result.data[0]
+        logger.info(f"Assignment created: {created_assignment['id']}")
+
+        # Auto-match unassigned paystubs to this new assignment
+        client_employee_id = created_assignment.get("client_employee_id")
+        if client_employee_id:
+            try:
+                _rematch_unassigned_paystubs(created_assignment)
+            except Exception as e:
+                logger.error(f"Auto-rematch failed (non-fatal): {e}")
+
+        return created_assignment
 
     except HTTPException:
         raise
@@ -141,6 +153,71 @@ async def create_assignment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create assignment: {str(e)}"
         )
+
+
+def _rematch_unassigned_paystubs(assignment: dict) -> None:
+    """
+    Find unassigned paystubs matching this assignment's client + employee ID,
+    link them, and calculate earnings.
+    """
+    client_company_id = assignment["client_company_id"]
+    client_employee_id = assignment["client_employee_id"]
+    assignment_id = assignment["id"]
+    start_date = assignment.get("start_date")
+
+    # Find paystubs with no assignment that match this client + employee
+    query = supabase_admin_client.table("paystubs").select("*").eq(
+        "client_company_id", client_company_id
+    ).eq(
+        "employee_id", client_employee_id
+    ).is_(
+        "contractor_assignment_id", "null"
+    )
+
+    if start_date:
+        query = query.gte("pay_period_begin", start_date)
+
+    end_date = assignment.get("end_date")
+    if end_date:
+        query = query.lte("pay_period_begin", end_date)
+
+    unassigned = query.execute()
+
+    if not unassigned.data:
+        return
+
+    logger.info(f"Auto-rematch: found {len(unassigned.data)} unassigned paystub(s) for assignment {assignment_id}")
+
+    for paystub in unassigned.data:
+        paystub_id = paystub["id"]
+        try:
+            # Link paystub to assignment
+            supabase_admin_client.table("paystubs").update({
+                "contractor_assignment_id": assignment_id
+            }).eq("id", paystub_id).execute()
+
+            # Calculate and save contractor earnings
+            paystub_data = paystub.get("paystub_data", {})
+            if paystub_data:
+                earnings = calculate_contractor_earnings(paystub_data, assignment)
+                PaystubService.save_earnings(
+                    paystub_id=paystub_id,
+                    contractor_assignment_id=assignment_id,
+                    earnings=earnings,
+                    pay_period_begin=paystub["pay_period_begin"],
+                    pay_period_end=paystub["pay_period_end"],
+                )
+
+                # Calculate manager earnings if applicable
+                try:
+                    calculate_manager_earnings(paystub_id)
+                except Exception:
+                    pass
+
+            logger.info(f"Auto-rematch: linked paystub {paystub_id} to assignment {assignment_id}")
+
+        except Exception as e:
+            logger.error(f"Auto-rematch: failed for paystub {paystub_id}: {e}")
 
 
 @router.get("", response_model=List[AssignmentWithDetails])
