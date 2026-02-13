@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,16 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, isLoading } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -25,7 +34,10 @@ export default function LoginPage() {
       await login({ email, password })
       // Use window.location for hard navigation to ensure state is fully loaded
       if (typeof window !== 'undefined') {
-        window.location.href = '/dashboard'
+        const redirect = searchParams.get('redirect')
+        // Only allow relative paths starting with / to prevent open redirect
+        const destination = redirect && redirect.startsWith('/') ? redirect : '/dashboard'
+        window.location.href = destination
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Invalid email or password')

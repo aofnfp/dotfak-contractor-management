@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Download, FileSignature } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ContractViewer } from '@/components/contracts/ContractViewer'
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge'
 import { SignatureCapture } from '@/components/contracts/SignatureCapture'
@@ -23,7 +24,7 @@ export default function ContractDetailPage() {
   const { data: contract, isLoading } = useContract(contractId)
   const signContract = useSignContract()
 
-  const [showSignature, setShowSignature] = useState(false)
+  const [agreed, setAgreed] = useState(false)
   const [signature, setSignature] = useState<{
     signature_data: string | null
     signature_method: SignatureMethod
@@ -46,7 +47,6 @@ export default function ContractDetailPage() {
         },
       })
       toast.success('Contract signed successfully!')
-      setShowSignature(false)
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to sign contract'))
     }
@@ -84,6 +84,9 @@ export default function ContractDetailPage() {
   const isAdmin = user?.role === 'admin'
   const canAdminSign = contract.status === 'pending_admin' && isAdmin
   const canContractorSign = contract.status === 'pending_contractor' && !isAdmin
+  const canSign = canAdminSign || canContractorSign
+  const isReady = agreed && !!signature.signature_data && !!signature.signer_name.trim()
+  const displayName = contract.contractor_name || contract.manager_name
 
   return (
     <div className="flex-1 space-y-6 p-8">
@@ -96,7 +99,7 @@ export default function ContractDetailPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-heading font-bold tracking-tight">
-              Contract — {contract.contractor_name}
+              Contract — {displayName}
             </h1>
             <div className="flex items-center gap-3 mt-1">
               <ContractStatusBadge status={contract.status} />
@@ -117,32 +120,12 @@ export default function ContractDetailPage() {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {contract.status === 'fully_executed' && (
-            <Button variant="outline" onClick={handleDownloadPdf} className="border-border">
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
-          {canAdminSign && !showSignature && (
-            <Button
-              onClick={() => setShowSignature(true)}
-              className="bg-cta hover:bg-cta/90 text-white"
-            >
-              <FileSignature className="h-4 w-4 mr-2" />
-              Counter-Sign
-            </Button>
-          )}
-          {canContractorSign && !showSignature && (
-            <Button
-              onClick={() => setShowSignature(true)}
-              className="bg-cta hover:bg-cta/90 text-white"
-            >
-              <FileSignature className="h-4 w-4 mr-2" />
-              Sign Contract
-            </Button>
-          )}
-        </div>
+        {contract.status === 'fully_executed' && (
+          <Button variant="outline" onClick={handleDownloadPdf} className="border-border">
+            <Download className="h-4 w-4 mr-2" />
+            Download PDF
+          </Button>
+        )}
       </div>
 
       {/* Signatures info */}
@@ -180,36 +163,6 @@ export default function ContractDetailPage() {
         </Card>
       )}
 
-      {/* Signing section (admin counter-sign or contractor sign) */}
-      {showSignature && (canAdminSign || canContractorSign) && (
-        <Card className="border-cta/30">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {canAdminSign ? 'Admin Counter-Signature' : 'Sign Contract'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <SignatureCapture onSignatureChange={setSignature} />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowSignature(false)}
-                className="border-border"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSign}
-                className="bg-cta hover:bg-cta/90 text-white"
-                disabled={!signature.signature_data || !signature.signer_name.trim() || signContract.isPending}
-              >
-                {signContract.isPending ? 'Signing...' : 'Sign Contract'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Contract content with signatures injected */}
       <Card className="border-secondary">
         <CardHeader>
@@ -219,6 +172,50 @@ export default function ContractDetailPage() {
           <ContractViewer htmlContent={contract.html_content} signatures={contract.signatures} />
         </CardContent>
       </Card>
+
+      {/* Signing CTA — always visible below contract when signature is needed */}
+      {canSign && (
+        <Card className="border-cta/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileSignature className="h-5 w-5 text-cta" />
+              {canAdminSign ? 'Counter-Sign Contract' : 'Sign This Contract'}
+            </CardTitle>
+            <CardDescription>
+              {canAdminSign
+                ? 'Review the contract above and add your counter-signature below to finalize.'
+                : 'By signing below, you agree to the terms and conditions outlined in the contract above.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <SignatureCapture onSignatureChange={setSignature} />
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox
+                checked={agreed}
+                onCheckedChange={(checked) => setAgreed(checked === true)}
+              />
+              <span className="text-sm text-muted-foreground leading-relaxed">
+                I have read and agree to the terms and conditions of this contract.
+              </span>
+            </label>
+
+            <Button
+              onClick={handleSign}
+              className="w-full bg-cta hover:bg-cta/90 text-white"
+              size="lg"
+              disabled={!isReady || signContract.isPending}
+            >
+              <FileSignature className="h-4 w-4 mr-2" />
+              {signContract.isPending
+                ? 'Signing...'
+                : canAdminSign
+                  ? 'Counter-Sign Contract'
+                  : 'Sign Contract'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

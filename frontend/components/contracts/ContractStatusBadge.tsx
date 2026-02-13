@@ -9,7 +9,7 @@ const statusConfig: Record<ContractStatus, { label: string; className: string }>
     className: 'bg-secondary text-muted-foreground border-border',
   },
   pending_contractor: {
-    label: 'Awaiting Contractor',
+    label: 'Awaiting Signature',
     className: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   },
   pending_admin: {

@@ -25,7 +25,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (!isInitialized) return
 
     if (!isAuthenticated) {
-      router.push('/login')
+      const currentPath = typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search
+        : ''
+      const redirectParam = currentPath && currentPath !== '/login'
+        ? `?redirect=${encodeURIComponent(currentPath)}`
+        : ''
+      router.push(`/login${redirectParam}`)
       return
     }
 
