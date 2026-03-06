@@ -14,6 +14,7 @@ AVAILABLE_PARSERS = {
     "iqor": "adp_parser",
     "connexus": "connexus_parser",
     "everise": "everise_parser",
+    "data_recognition": "dayforce_parser",
 }
 
 
