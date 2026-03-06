@@ -101,7 +101,7 @@ class DayforceParser:
         are split by unrelated content from the other column.
         """
         header = {
-            "company": {"name": "", "address": ""},
+            "company": {"name": "", "address": "", "phone": ""},
             "employee": {"name": "", "id": None, "address": ""},
             "pay_period": {},
             "check_date": None,
@@ -158,6 +158,11 @@ class DayforceParser:
                 if candidate not in ('Employer', 'Withholding', 'Employee'):
                     name += " " + candidate
             header["company"]["name"] = name
+
+        # Employer phone: "Employer Phone: 763-268-2000"
+        phone_match = re.search(r'Employer Phone:\s*([\d-]+)', text)
+        if phone_match:
+            header["company"]["phone"] = phone_match.group(1).strip()
 
         # Employer address: split across two lines
         # "Employer 13490 Bass Lake Road"
