@@ -572,10 +572,11 @@ async def get_payment(
     - Contractor: can only view their own payments
     """
     try:
-        # Get payment
-        payment_result = supabase_admin_client.table("contractor_payments").select("*").eq(
-            "id", payment_id
-        ).execute()
+        # Fetch payment with contractor info so the UI can render the
+        # contractor name + code without a second roundtrip.
+        payment_result = supabase_admin_client.table("contractor_payments").select(
+            "*, contractors(contractor_code, first_name, last_name)"
+        ).eq("id", payment_id).execute()
 
         if not payment_result.data:
             raise HTTPException(
@@ -594,13 +595,32 @@ async def get_payment(
                     detail="You can only view your own payments"
                 )
 
-        # Get allocations
-        allocations_result = supabase_admin_client.table("payment_allocations").select("*").eq(
-            "payment_id", payment_id
-        ).execute()
+        # Flatten contractor join into top-level enrichment fields
+        contractor = payment.pop("contractors", None) or {}
+        full_name = f"{contractor.get('first_name') or ''} {contractor.get('last_name') or ''}".strip()
+        payment["contractor_name"] = full_name or None
+        payment["contractor_code"] = contractor.get("contractor_code")
 
-        if allocations_result.data:
-            payment['allocations'] = allocations_result.data
+        # Fetch allocations joined with earnings so each row carries the
+        # period dates + earning total the UI displays.
+        allocations_result = supabase_admin_client.table("payment_allocations").select(
+            "*, contractor_earnings(pay_period_begin, pay_period_end, contractor_total_earnings)"
+        ).eq("payment_id", payment_id).execute()
+
+        allocations = []
+        for alloc in allocations_result.data or []:
+            earning = alloc.pop("contractor_earnings", None) or {}
+            earning_total = earning.get("contractor_total_earnings")
+            allocations.append({
+                **alloc,
+                # Frontend reads `amount` (not amount_allocated), so expose both
+                "amount": float(alloc.get("amount_allocated") or 0),
+                "earning_pay_period_begin": earning.get("pay_period_begin"),
+                "earning_pay_period_end": earning.get("pay_period_end"),
+                "earning_total": float(earning_total) if earning_total is not None else None,
+            })
+
+        payment["allocations"] = allocations
 
         return payment
 

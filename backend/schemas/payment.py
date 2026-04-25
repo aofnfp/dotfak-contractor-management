@@ -51,6 +51,9 @@ class PaymentResponse(BaseModel):
     recorded_by: UUID
     created_at: datetime
     allocations: Optional[List[dict]] = None
+    # Enrichment fields populated by the detail endpoint
+    contractor_name: Optional[str] = None
+    contractor_code: Optional[str] = None
 
     class Config:
         from_attributes = True
