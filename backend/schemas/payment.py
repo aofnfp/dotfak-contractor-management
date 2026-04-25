@@ -51,6 +51,9 @@ class PaymentResponse(BaseModel):
     recorded_by: UUID
     created_at: datetime
     allocations: Optional[List[dict]] = None
+    # Enrichment fields populated by the detail endpoint
+    contractor_name: Optional[str] = None
+    contractor_code: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -63,7 +66,12 @@ class PaymentListItem(BaseModel):
     amount: float
     payment_method: Optional[str]
     payment_date: date
+    transaction_reference: Optional[str] = None
     created_at: datetime
+    # Enrichment fields populated by the list endpoint
+    contractor_name: Optional[str] = None
+    contractor_code: Optional[str] = None
+    allocations: Optional[List[dict]] = None
 
     class Config:
         from_attributes = True
