@@ -109,9 +109,10 @@ async def list_payments(
     """
     try:
         role = user.get("role")
+        contractor_select = "*, contractors(contractor_code, first_name, last_name)"
 
         if role == "admin":
-            query = supabase_admin_client.table("contractor_payments").select("*")
+            query = supabase_admin_client.table("contractor_payments").select(contractor_select)
 
             if contractor_id:
                 query = query.eq("contractor_id", contractor_id)
@@ -123,13 +124,37 @@ async def list_payments(
             if not own_contractor_id:
                 return []
 
-            query = supabase_admin_client.table("contractor_payments").select("*").eq(
+            query = supabase_admin_client.table("contractor_payments").select(contractor_select).eq(
                 "contractor_id", own_contractor_id
             )
 
         result = query.order("payment_date", desc=True).limit(limit).execute()
+        payments = result.data or []
 
-        return result.data if result.data else []
+        if not payments:
+            return []
+
+        # Flatten contractor join into top-level enrichment fields
+        for p in payments:
+            contractor = p.pop("contractors", None) or {}
+            full_name = f"{contractor.get('first_name') or ''} {contractor.get('last_name') or ''}".strip()
+            p["contractor_name"] = full_name or None
+            p["contractor_code"] = contractor.get("contractor_code")
+
+        # Batch-fetch allocations so each row carries its allocation count
+        payment_ids = [str(p["id"]) for p in payments]
+        allocs_result = supabase_admin_client.table("payment_allocations").select(
+            "id, payment_id, amount_allocated"
+        ).in_("payment_id", payment_ids).execute()
+
+        allocs_by_payment: dict[str, list] = {}
+        for a in allocs_result.data or []:
+            allocs_by_payment.setdefault(str(a["payment_id"]), []).append(a)
+
+        for p in payments:
+            p["allocations"] = allocs_by_payment.get(str(p["id"]), [])
+
+        return payments
 
     except Exception as e:
         logger.error(f"Failed to list payments: {str(e)}")
