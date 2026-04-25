@@ -280,6 +280,20 @@ async def upload_paystub_with_earnings(
                         paystub_with_details["earnings_error"] = str(e)
                         errors.append(f"Paystub {idx}: {str(e)}")
 
+                # Auto-match bank accounts and sync earnings payment status.
+                # Without this, every paystub except the one the UI later opens
+                # would land with no paystub_account_splits and look unpaid.
+                try:
+                    accounts_check = BankAccountService.check_paystub_accounts(saved_paystub['id'])
+                    BankAccountService.sync_earnings_payment_status(saved_paystub['id'])
+                    paystub_with_details["needs_account_assignment"] = accounts_check.needs_assignment
+                    paystub_with_details["unassigned_accounts"] = [
+                        a.dict() if hasattr(a, "dict") else a for a in accounts_check.unassigned_accounts
+                    ]
+                except Exception as bank_err:
+                    logger.error(f"Bank account auto-match failed for paystub {saved_paystub['id']}: {bank_err}")
+                    paystub_with_details["bank_account_error"] = str(bank_err)
+
                 processed_paystubs.append(paystub_with_details)
                 logger.info(f"Paystub {idx}/{len(paystubs)} saved: {pay_period_begin} to {pay_period_end}")
 
