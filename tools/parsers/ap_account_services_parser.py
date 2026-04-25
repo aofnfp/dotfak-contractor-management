@@ -96,30 +96,27 @@ class APAccountServicesParser:
         if name_match:
             header["employee"]["name"] = name_match.group(1).strip()
 
-        # Employee ID appears after company name on the same line as dates
-        emp_id_match = re.search(r'AP Account Services LLC\s+(\d+)\s+\d{2}/\d{2}/\d{4}', text)
-        if emp_id_match:
-            header["employee"]["id"] = emp_id_match.group(1)
-
-        # Pay period dates
-        pay_period_match = re.search(
-            r'Pay Period Begin\s+Pay Period End.*?\n[^\n]*?\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}/\d{2}/\d{4})',
+        # Header row layout:
+        #   Name | Company | EmployeeID | PayPeriodBegin | PayPeriodEnd | CheckDate | (CheckNumber?)
+        # All three dates and the optional check number appear on the same line as
+        # "AP Account Services LLC". The previous version pulled check_date/check_number
+        # from a separate regex that grabbed the wrong columns (pay_period_begin/end).
+        header_row_match = re.search(
+            r'AP Account Services LLC[ \t]+(\d+)[ \t]+'
+            r'(\d{2}/\d{2}/\d{4})[ \t]+'   # pay_period_begin
+            r'(\d{2}/\d{2}/\d{4})[ \t]+'   # pay_period_end
+            r'(\d{2}/\d{2}/\d{4})'          # check_date
+            r'(?:[ \t]+(\S+))?'             # check_number (optional)
+            r'[ \t]*(?:\n|$)',
             text
         )
-        if pay_period_match:
-            header["pay_period"]["begin"] = self._parse_date(pay_period_match.group(1))
-            header["pay_period"]["end"] = self._parse_date(pay_period_match.group(2))
-
-        # Check date
-        check_date_match = re.search(r'Check Date\s+Check Number.*?\n[^\n]*?\s+(\d{2}/\d{2}/\d{4})', text)
-        if check_date_match:
-            header["check_date"] = self._parse_date(check_date_match.group(1))
-
-        # Check number (optional)
-        check_num_match = re.search(r'Check Date\s+Check Number.*?\n[^\n]*?\s+\d{2}/\d{2}/\d{4}\s+(\S+)', text)
-        if check_num_match:
-            num = check_num_match.group(1).strip()
-            header["check_number"] = num if num else None
+        if header_row_match:
+            header["employee"]["id"] = header_row_match.group(1)
+            header["pay_period"]["begin"] = self._parse_date(header_row_match.group(2))
+            header["pay_period"]["end"] = self._parse_date(header_row_match.group(3))
+            header["check_date"] = self._parse_date(header_row_match.group(4))
+            check_num = header_row_match.group(5)
+            header["check_number"] = check_num if check_num else None
 
         return header
 
