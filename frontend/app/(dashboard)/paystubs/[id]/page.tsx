@@ -37,6 +37,18 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
   const [hasUnassignedAccounts, setHasUnassignedAccounts] = useState(false)
   const [checkingAccounts, setCheckingAccounts] = useState(true)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true)
+      await paystubsApi.downloadPdf(id)
+    } catch (err) {
+      console.error('PDF download failed:', err)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   // Check for unassigned accounts when paystub loads (admin only — endpoint is admin-only)
   useEffect(() => {
@@ -126,28 +138,39 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
             Pay period: {formatDate(paystub.pay_period_begin)} - {formatDate(paystub.pay_period_end)}
           </p>
         </div>
-        {isAdmin && (
-          <div className="flex gap-2">
-            {hasUnassignedAccounts && !checkingAccounts && (
+        <div className="flex gap-2">
+          <Button
+            onClick={handleDownloadPdf}
+            variant="outline"
+            disabled={downloadingPdf}
+            className="border-cta text-cta hover:bg-cta hover:text-white"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {downloadingPdf ? 'Generating…' : 'Download PDF'}
+          </Button>
+          {isAdmin && (
+            <>
+              {hasUnassignedAccounts && !checkingAccounts && (
+                <Button
+                  onClick={handleAssignAccounts}
+                  variant="outline"
+                  className="border-cta text-cta hover:bg-cta hover:text-white"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Assign Bank Accounts
+                </Button>
+              )}
               <Button
-                onClick={handleAssignAccounts}
-                variant="outline"
-                className="border-cta text-cta hover:bg-cta hover:text-white"
+                onClick={handleDelete}
+                variant="destructive"
+                disabled={deletePaystub.isPending}
               >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Assign Bank Accounts
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deletePaystub.isPending ? 'Deleting...' : 'Delete'}
               </Button>
-            )}
-            <Button
-              onClick={handleDelete}
-              variant="destructive"
-              disabled={deletePaystub.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deletePaystub.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Status Badge — admin/manager see assignment status; contractor sees nothing extra */}

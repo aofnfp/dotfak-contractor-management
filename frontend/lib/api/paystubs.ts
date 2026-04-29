@@ -115,4 +115,31 @@ export const paystubsApi = {
     const response = await apiClient.post(`/paystubs/${id}/assign-accounts`, request)
     return response.data
   },
+
+  /**
+   * Download a DotFak-branded PDF of the paystub. Triggers a browser download.
+   */
+  downloadPdf: async (id: string): Promise<void> => {
+    const response = await apiClient.get(`/paystubs/${id}/pdf`, {
+      responseType: 'blob',
+    })
+
+    // Pull filename from Content-Disposition; fall back to a sensible default.
+    const disposition: string | undefined = response.headers['content-disposition']
+    let filename = `DotFak_Paystub_${id}.pdf`
+    if (disposition) {
+      const match = /filename="?([^"]+)"?/.exec(disposition)
+      if (match) filename = match[1]
+    }
+
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  },
 }
