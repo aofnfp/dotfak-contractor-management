@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { Pagination } from '@/components/ui/pagination'
 import { usePaystubs } from '@/lib/hooks/usePaystubs'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 
 // Lazy load heavy table component
 const PaystubsTable = dynamic(
@@ -25,7 +25,7 @@ const ITEMS_PER_PAGE = 20
 export default function PaystubsPage() {
   const router = useRouter()
   const { data: paystubs, isLoading, error } = usePaystubs()
-  const role = useAuth((s) => s.user?.role)
+  const role = useEffectiveRole()
   const isAdmin = role === 'admin'
   const isManager = role === 'manager'
   const [searchInput, setSearchInput] = useState('')

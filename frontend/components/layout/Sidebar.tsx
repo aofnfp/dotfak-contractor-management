@@ -5,18 +5,20 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigationConfig } from '@/lib/config/navigation'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 
 /**
  * Sidebar Component
  *
  * Main navigation sidebar for the dashboard.
- * Filters navigation items based on user role.
+ * Filters navigation items based on the *effective* role — when an admin is
+ * impersonating, this is the target's role, so the sidebar mirrors what
+ * the impersonated user actually sees.
  */
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const role = useEffectiveRole()
 
   return (
     <div className="flex h-full w-64 flex-col bg-secondary border-r border-border">
@@ -38,7 +40,7 @@ export function Sidebar() {
         <div className="space-y-6">
           {navigationConfig.map((section) => {
             const visibleItems = section.items.filter(
-              (item) => !item.roles || item.roles.includes(user?.role as 'admin' | 'contractor' | 'manager')
+              (item) => !item.roles || (role !== undefined && item.roles.includes(role))
             )
             if (visibleItems.length === 0) return null
 

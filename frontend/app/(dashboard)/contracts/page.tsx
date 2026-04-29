@@ -24,14 +24,14 @@ import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { Pagination } from '@/components/ui/pagination'
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge'
 import { useContracts, usePendingSignatures } from '@/lib/hooks/useContracts'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import type { ContractStatus } from '@/lib/types/contract'
 
 const ITEMS_PER_PAGE = 20
 
 export default function ContractsPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const role = useEffectiveRole()
+  const isAdmin = role === 'admin'
   const { data: contracts, isLoading, error } = useContracts()
   const { data: pending } = usePendingSignatures(isAdmin)
 
