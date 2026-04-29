@@ -4,6 +4,7 @@ Enhanced paystub router - upload with auto-matching and earnings calculation.
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends, Form
+from fastapi.responses import Response
 from typing import List, Optional
 from pathlib import Path
 import sys
@@ -442,6 +443,85 @@ async def check_paystub_accounts(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check accounts: {str(e)}"
+        )
+
+
+@router.get("/{paystub_id}/pdf")
+async def download_paystub_pdf(
+    paystub_id: int,
+    user: dict = Depends(verify_token)
+):
+    """
+    Download a DotFak-branded PDF rendering of the paystub.
+
+    Visible to:
+    - Admin: any paystub.
+    - Contractor: only their own paystubs.
+    - Manager: only paystubs for staff they oversee.
+
+    Returns:
+        PDF file stream with Content-Disposition: attachment.
+    """
+    from backend.services.paystub_pdf_service import render_paystub_pdf, build_pdf_filename
+    from backend.services.enrichment_service import enrich_paystubs
+
+    try:
+        scoped_ids = _scoped_assignment_ids_for_user(user)
+        # Non-admin with no visible assignments → 404 (don't leak existence)
+        if scoped_ids is not None and not scoped_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Paystub not found"
+            )
+
+        paystub_result = supabase_admin_client.table("paystubs").select("*").eq(
+            "id", paystub_id
+        ).execute()
+        if not paystub_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Paystub not found"
+            )
+        paystub = paystub_result.data[0]
+
+        # Authorization for non-admins
+        if scoped_ids is not None:
+            if paystub.get("contractor_assignment_id") not in scoped_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Paystub not found"
+                )
+
+        # Enrich with contractor + client names so the PDF can show them
+        enriched = enrich_paystubs([paystub])
+        enriched_paystub = enriched[0] if enriched else paystub
+
+        try:
+            pdf_bytes = render_paystub_pdf(enriched_paystub)
+        except ImportError:
+            logger.error("WeasyPrint not available — cannot render paystub PDF")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="PDF rendering temporarily unavailable"
+            )
+
+        filename = build_pdf_filename(enriched_paystub)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes)),
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to render paystub PDF for {paystub_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to render paystub PDF: {str(e)}"
         )
 
 

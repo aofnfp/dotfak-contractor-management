@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: letter; margin: 0.6in 0.6in 0.5in 0.6in; }
+  body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; line-height: 1.45; color: #1a1a1a; }
+
+  /* Letterhead — same DotFak gold accent used on contracts */
+  .letterhead { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 2px solid #C9A84C; margin-bottom: 18px; }
+  .letterhead-brand { display: flex; align-items: center; gap: 12px; }
+  .letterhead img { width: 52px; height: 52px; }
+  .letterhead .company-name { font-size: 13pt; color: #8B7332; letter-spacing: 0.13em; margin: 0; text-transform: uppercase; font-weight: 700; }
+  .letterhead .tagline { font-size: 7.5pt; color: #999; letter-spacing: 0.1em; margin: 2px 0 0 0; text-transform: uppercase; }
+  .letterhead .doc-label { text-align: right; font-size: 8.5pt; color: #666; text-transform: uppercase; letter-spacing: 0.12em; }
+  .letterhead .doc-title { font-size: 14pt; color: #1a1a1a; margin: 4px 0 0 0; font-weight: 700; }
+
+  /* Section headers */
+  h2 { font-size: 9.5pt; margin: 18px 0 8px 0; color: #8B7332; border-bottom: 1px solid #C9A84C; padding-bottom: 3px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+
+  /* Two-column info grid */
+  .info-grid { display: flex; gap: 24px; margin-bottom: 4px; }
+  .info-col { flex: 1; }
+  .info-row { display: flex; padding: 3px 0; font-size: 9.5pt; }
+  .info-row .label { width: 110px; color: #666; }
+  .info-row .value { flex: 1; color: #1a1a1a; font-weight: 500; }
+
+  /* Summary cards row */
+  .summary-row { display: flex; gap: 10px; margin: 12px 0 4px 0; }
+  .summary-card { flex: 1; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fafafa; }
+  .summary-card .summary-label { font-size: 7.5pt; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .summary-card .summary-value { font-size: 14pt; font-weight: 700; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .summary-card.net { border-color: #C9A84C; background: #fdfaf0; }
+  .summary-card.net .summary-value { color: #8B7332; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #666; padding: 6px 8px; border-bottom: 1px solid #d4d4d4; font-weight: 600; }
+  td { padding: 5px 8px; font-size: 9.5pt; border-bottom: 1px solid #f0f0f0; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; }
+  tr.totals td { font-weight: 700; border-top: 1px solid #d4d4d4; border-bottom: none; padding-top: 8px; }
+
+  /* Footer */
+  .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #C9A84C; text-align: center; font-size: 7.5pt; color: #999; letter-spacing: 0.05em; }
+  .footer .disclaimer { margin-top: 4px; font-size: 7pt; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div class="letterhead">
+  <div class="letterhead-brand">
+    <img src="{{ company_logo }}" alt="DotFak" />
+    <div>
+      <p class="company-name">Dotfak Group LLC</p>
+      <p class="tagline">Built to Lead. Designed to Last.</p>
+    </div>
+  </div>
+  <div>
+    <p class="doc-label">Paystub Summary</p>
+    <p class="doc-title">{{ pay_period_begin_human }} – {{ pay_period_end_human }}</p>
+  </div>
+</div>
+
+<h2>Contractor &amp; Engagement</h2>
+<div class="info-grid">
+  <div class="info-col">
+    <div class="info-row"><span class="label">Contractor</span><span class="value">{{ contractor_name or employee_name }}</span></div>
+    {% if contractor_code %}<div class="info-row"><span class="label">Code</span><span class="value">{{ contractor_code }}</span></div>{% endif %}
+    {% if employee_id %}<div class="info-row"><span class="label">Employee ID</span><span class="value">{{ employee_id }}</span></div>{% endif %}
+    {% if job_title %}<div class="info-row"><span class="label">Role</span><span class="value">{{ job_title }}</span></div>{% endif %}
+  </div>
+  <div class="info-col">
+    <div class="info-row"><span class="label">Client</span><span class="value">{{ client_name }}</span></div>
+    <div class="info-row"><span class="label">Pay Period</span><span class="value">{{ pay_period_begin_human }} – {{ pay_period_end_human }}</span></div>
+    {% if check_date_human %}<div class="info-row"><span class="label">Pay Date</span><span class="value">{{ check_date_human }}</span></div>{% endif %}
+    {% if check_number %}<div class="info-row"><span class="label">Check #</span><span class="value">{{ check_number }}</span></div>{% endif %}
+  </div>
+</div>
+
+<div class="summary-row">
+  <div class="summary-card">
+    <div class="summary-label">Gross Pay</div>
+    <div class="summary-value">${{ "{:,.2f}".format(gross_pay) }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Total Hours</div>
+    <div class="summary-value">{{ "{:.2f}".format(total_hours) if total_hours else "—" }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Taxes</div>
+    <div class="summary-value">${{ "{:,.2f}".format(employee_taxes) }}</div>
+  </div>
+  <div class="summary-card net">
+    <div class="summary-label">Net Pay</div>
+    <div class="summary-value">${{ "{:,.2f}".format(net_pay) }}</div>
+  </div>
+</div>
+
+{% if earnings %}
+<h2>Earnings</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th class="num">Hours</th>
+      <th class="num">Rate</th>
+      <th class="num">Amount</th>
+      <th class="num">YTD</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in earnings %}
+    <tr>
+      <td>{{ e.description }}</td>
+      <td class="num">{{ "{:.2f}".format(e.hours) if e.hours else "—" }}</td>
+      <td class="num">{{ "${:,.4f}".format(e.rate) if e.rate else "—" }}</td>
+      <td class="num">${{ "{:,.2f}".format(e.amount or 0) }}</td>
+      <td class="num">${{ "{:,.2f}".format(e.ytd or 0) }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="totals">
+      <td>Gross Earnings</td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num">${{ "{:,.2f}".format(gross_pay) }}</td>
+      <td class="num">${{ "{:,.2f}".format(ytd_gross_pay) }}</td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
+{% if taxes %}
+<h2>Taxes</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th class="num">Current</th>
+      <th class="num">YTD</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in taxes %}
+    <tr>
+      <td>{{ t.description }}</td>
+      <td class="num">${{ "{:,.2f}".format(t.amount or 0) }}</td>
+      <td class="num">${{ "{:,.2f}".format(t.ytd or 0) }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="totals">
+      <td>Total Taxes</td>
+      <td class="num">${{ "{:,.2f}".format(employee_taxes) }}</td>
+      <td class="num">${{ "{:,.2f}".format(ytd_employee_taxes) }}</td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  <div>Dotfak Group LLC &nbsp;·&nbsp; Generated {{ generated_at }}</div>
+  <div class="disclaimer">
+    This summary is an internal record produced from paystub data. It is not a check or
+    a tax document. Refer to the original employer-issued paystub for official figures.
+  </div>
+</div>
+
+</body>
+</html>
