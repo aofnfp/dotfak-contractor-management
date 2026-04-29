@@ -39,6 +39,7 @@ from backend.routers import (
     manager_earnings_router,
     manager_onboarding_router,
     devices_router,
+    admin_impersonation_router,
 )
 
 load_dotenv()
@@ -84,6 +85,7 @@ app.include_router(manager_assignments_router)
 app.include_router(manager_earnings_router)
 app.include_router(manager_onboarding_router)
 app.include_router(devices_router)
+app.include_router(admin_impersonation_router)
 
 
 @app.get("/")

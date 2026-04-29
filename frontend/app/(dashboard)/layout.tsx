@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner'
 
 /**
  * Dashboard Layout
@@ -48,6 +49,9 @@ export default function DashboardLayout({
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
           <Header onMenuClick={handleMenuClick} />
+
+          {/* Impersonation banner — only renders when an admin is impersonating */}
+          <ImpersonationBanner />
 
           {/* Page Content */}
           <main className="flex-1 overflow-y-auto">

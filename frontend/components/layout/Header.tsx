@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useImpersonation } from '@/lib/hooks/useImpersonation'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Menu, User, LogOut, Settings } from 'lucide-react'
+import { Menu, User, LogOut, Settings, Eye } from 'lucide-react'
+import { ImpersonatePicker } from '@/components/admin/ImpersonatePicker'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -24,6 +27,12 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth()
+  const { target: impersonationTarget, stopImpersonating } = useImpersonation()
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Admin-only feature. We gate on the locally-stored user.role which always
+  // reflects the actual admin (impersonation only affects backend identity).
+  const isAdmin = user?.role === 'admin'
 
   const handleLogout = () => {
     logout()
@@ -76,6 +85,28 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator className="bg-border" />
+              {impersonationTarget ? (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-yellow-500/10 text-yellow-300 focus:text-yellow-200"
+                  onClick={() => stopImpersonating()}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>Exit "View as {impersonationTarget.name}"</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-primary/10"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>View as another user…</span>
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
           <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
             className="cursor-pointer hover:bg-destructive/10 text-destructive focus:text-destructive"
@@ -86,6 +117,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {isAdmin && (
+        <ImpersonatePicker open={pickerOpen} onOpenChange={setPickerOpen} />
+      )}
     </header>
   )
 }

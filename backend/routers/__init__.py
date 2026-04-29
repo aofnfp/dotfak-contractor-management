@@ -17,6 +17,7 @@ from backend.routers.manager_assignments import router as manager_assignments_ro
 from backend.routers.manager_earnings import router as manager_earnings_router
 from backend.routers.manager_onboarding import router as manager_onboarding_router
 from backend.routers.devices import router as devices_router
+from backend.routers.admin_impersonation import router as admin_impersonation_router
 
 __all__ = [
     "auth_router",
@@ -34,4 +35,5 @@ __all__ = [
     "manager_earnings_router",
     "manager_onboarding_router",
     "devices_router",
+    "admin_impersonation_router",
 ]
