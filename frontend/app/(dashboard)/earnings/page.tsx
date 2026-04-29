@@ -16,6 +16,7 @@ import { useManagerEarnings } from '@/lib/hooks/useManagerEarnings'
 import { useContractors } from '@/lib/hooks/useContractors'
 import { useClients } from '@/lib/hooks/useClients'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import { formatCurrency } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { normalizeManagerEarnings } from '@/lib/utils/normalize-earnings'
@@ -460,9 +461,9 @@ function ContractorEarningsPage({ isAdmin }: { isAdmin: boolean }) {
 }
 
 export default function EarningsPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
-  const isManager = user?.role === 'manager'
+  const role = useEffectiveRole()
+  const isAdmin = role === 'admin'
+  const isManager = role === 'manager'
 
   if (isManager) {
     return <ManagerEarningsPage />

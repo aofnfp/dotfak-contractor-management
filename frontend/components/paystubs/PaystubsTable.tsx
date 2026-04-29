@@ -82,11 +82,14 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading, 
             <TableHead className="font-heading">Pay Period</TableHead>
             {!isContractor && <TableHead className="font-heading">Contractor</TableHead>}
             <TableHead className="font-heading">Client</TableHead>
-            <TableHead className="font-heading">Gross Pay</TableHead>
+            {/* Gross Pay column shows the company's revenue from the client —
+                hide it from contractors and managers. */}
+            {isAdmin && <TableHead className="font-heading">Gross Pay</TableHead>}
             <TableHead className="font-heading">Hours</TableHead>
             {isAdmin && <TableHead className="font-heading">Contractor Pay</TableHead>}
             {isAdmin && <TableHead className="font-heading">Admin Pay</TableHead>}
-            <TableHead className="font-heading">{isContractor ? 'Net Pay' : 'Status'}</TableHead>
+            {isContractor && <TableHead className="font-heading">My Earnings</TableHead>}
+            <TableHead className="font-heading">Status</TableHead>
             {isAdmin && <TableHead className="font-heading">Uploaded</TableHead>}
             <TableHead className="text-right font-heading">Actions</TableHead>
           </TableRow>
@@ -133,9 +136,11 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading, 
                   </p>
                 </div>
               </TableCell>
-              <TableCell className="font-mono">
-                {formatCurrency(paystub.gross_pay)}
-              </TableCell>
+              {isAdmin && (
+                <TableCell className="font-mono">
+                  {formatCurrency(paystub.gross_pay)}
+                </TableCell>
+              )}
               <TableCell className="text-muted-foreground">
                 {paystub.total_hours ? `${Number(paystub.total_hours).toFixed(2)} hrs` : '—'}
               </TableCell>
@@ -153,9 +158,22 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading, 
                     : <span className="text-muted-foreground text-xs">—</span>}
                 </TableCell>
               )}
+              {isContractor && (
+                <TableCell className="font-mono">
+                  {paystub.contractor_total_earnings != null
+                    ? formatCurrency(paystub.contractor_total_earnings)
+                    : <span className="text-muted-foreground text-xs">Pending</span>}
+                </TableCell>
+              )}
               <TableCell>
                 {isContractor ? (
-                  <span className="font-mono">{formatCurrency(paystub.net_pay)}</span>
+                  paystub.payment_status === 'paid' ? (
+                    <Badge className="bg-cta hover:bg-cta/90">Paid</Badge>
+                  ) : paystub.payment_status === 'partially_paid' ? (
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-600">Partially Paid</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">Unpaid</Badge>
+                  )
                 ) : paystub.auto_matched ? (
                   <Badge className="bg-cta hover:bg-cta/90">
                     <UserCheck className="h-3 w-3 mr-1" />

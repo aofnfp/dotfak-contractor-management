@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import { useDashboardStats, useContractorDashboardStats, useManagerDashboardStats } from '@/lib/hooks/useDashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -1038,16 +1039,16 @@ function ManagerDashboard() {
 }
 
 /* ============================================================
-   MAIN PAGE - Routes by role
+   MAIN PAGE - Routes by effective role (so impersonation works)
    ============================================================ */
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const role = useEffectiveRole()
 
-  if (user?.role === 'contractor') {
+  if (role === 'contractor') {
     return <ContractorDashboard />
   }
 
-  if (user?.role === 'manager') {
+  if (role === 'manager') {
     return <ManagerDashboard />
   }
 

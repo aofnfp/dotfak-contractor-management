@@ -11,6 +11,7 @@ import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge'
 import { SignatureCapture } from '@/components/contracts/SignatureCapture'
 import { useContract, useSignContract } from '@/lib/hooks/useContracts'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api/client'
 import type { SignatureMethod } from '@/lib/types/contract'
@@ -20,6 +21,7 @@ export default function ContractDetailPage() {
   const router = useRouter()
   const contractId = params.id as string
   const { user } = useAuth()
+  const role = useEffectiveRole()
 
   const { data: contract, isLoading } = useContract(contractId)
   const signContract = useSignContract()
@@ -81,7 +83,7 @@ export default function ContractDetailPage() {
     )
   }
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = role === 'admin'
   const canAdminSign = contract.status === 'pending_admin' && isAdmin
   const canContractorSign = contract.status === 'pending_contractor' && !isAdmin
   const canSign = canAdminSign || canContractorSign

@@ -5,7 +5,7 @@ Enhanced paystub router - upload with auto-matching and earnings calculation.
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends, Form
 from fastapi.responses import Response
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 import sys
 import logging
@@ -77,27 +77,84 @@ def _scoped_assignment_ids_for_user(user: dict) -> Optional[List[str]]:
     return []
 
 
-def _sanitize_paystub_for_viewer(paystub: dict, role: str) -> dict:
-    """Strip admin-only fields from a paystub response for non-admins."""
+def _fetch_contractor_earnings_by_paystub(paystub_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+    """Batch-fetch contractor_earnings keyed by paystub_id."""
+    if not paystub_ids:
+        return {}
+    result = supabase_admin_client.table("contractor_earnings").select("*").in_(
+        "paystub_id", paystub_ids
+    ).execute()
+    return {row["paystub_id"]: row for row in (result.data or [])}
+
+
+def _sanitize_paystub_for_viewer(
+    paystub: dict,
+    role: str,
+    contractor_earning: Optional[Dict[str, Any]] = None,
+) -> dict:
+    """Reshape a paystub response for non-admin viewers.
+
+    The raw paystub holds the *company's* numbers (what the client paid the
+    company). Contractors must see *their own* numbers (what they earn from
+    the company per their assignment), and managers shouldn't see dollar
+    figures at all — only hours and status.
+
+    Args:
+        paystub: enriched paystub dict from the DB
+        role: viewer's role
+        contractor_earning: matching row from contractor_earnings, if any
+    """
     if role == "admin":
         return paystub
+
+    # Common: strip admin-only / sensitive fields
     sanitized = {k: v for k, v in paystub.items() if k not in _NON_ADMIN_HIDDEN_FIELDS}
-    # Strip company_margin from the embedded earnings sub-object
-    earnings = sanitized.get("earnings")
-    if isinstance(earnings, dict):
+
+    # Drop company_margin from any embedded earnings sub-object
+    embedded = sanitized.get("earnings")
+    if isinstance(embedded, dict):
         sanitized["earnings"] = {
-            k: v for k, v in earnings.items() if k != "company_margin"
+            k: v for k, v in embedded.items() if k != "company_margin"
         }
-    # Drop raw paystub_data for non-admins by default — it includes employer
-    # FEIN, bank routing, and other internals. Re-expose a curated subset.
+
+    # Reduce raw paystub_data to a curated subset — and strip the line items
+    # for non-admins, since the rate × hours columns expose what the client
+    # pays the company.
     raw = sanitized.pop("paystub_data", None) or {}
     sanitized["paystub_data"] = {
         "header": raw.get("header"),
-        "summary": raw.get("summary"),
-        "earnings": raw.get("earnings", []),
-        "taxes": raw.get("taxes", []),
         "tax_info": raw.get("tax_info"),
+        # earnings + summary + taxes intentionally omitted — those are the
+        # company's numbers from the client's paystub.
     }
+
+    # For contractors, replace the company gross/net with their own earnings.
+    if role == "contractor":
+        if contractor_earning:
+            ce = contractor_earning
+            sanitized["gross_pay"] = float(ce.get("contractor_total_earnings") or 0)
+            sanitized["net_pay"] = float(ce.get("contractor_total_earnings") or 0)
+            sanitized["contractor_total_earnings"] = float(ce.get("contractor_total_earnings") or 0)
+            sanitized["contractor_regular_earnings"] = float(ce.get("contractor_regular_earnings") or 0)
+            sanitized["contractor_bonus_share"] = float(ce.get("contractor_bonus_share") or 0)
+            sanitized["payment_status"] = ce.get("payment_status")
+            sanitized["amount_paid"] = float(ce.get("amount_paid") or 0)
+            sanitized["amount_pending"] = float(ce.get("amount_pending") or 0)
+        else:
+            # Earnings haven't been calculated yet for this paystub. Don't
+            # leak the company's gross — show nothing instead.
+            sanitized["gross_pay"] = None
+            sanitized["net_pay"] = None
+            sanitized["contractor_total_earnings"] = None
+
+    # For managers, drop dollar figures entirely (manager has its own
+    # manager_earnings table for their compensation).
+    if role == "manager":
+        sanitized["gross_pay"] = None
+        sanitized["net_pay"] = None
+        sanitized["contractor_amount"] = None
+        sanitized["admin_amount"] = None
+
     return sanitized
 
 logger = logging.getLogger(__name__)
@@ -496,6 +553,16 @@ async def download_paystub_pdf(
         enriched = enrich_paystubs([paystub])
         enriched_paystub = enriched[0] if enriched else paystub
 
+        # For non-admins, sanitize so the PDF shows the right numbers
+        # (contractor: their earnings; manager: hours only, no $$).
+        role = user.get("role", "")
+        if role != "admin":
+            ce = None
+            if role == "contractor":
+                ce_lookup = _fetch_contractor_earnings_by_paystub([paystub_id])
+                ce = ce_lookup.get(paystub_id)
+            enriched_paystub = _sanitize_paystub_for_viewer(enriched_paystub, role, ce)
+
         try:
             pdf_bytes = render_paystub_pdf(enriched_paystub)
         except ImportError:
@@ -762,9 +829,17 @@ async def list_paystubs(
         # Batch enrich contractor/client names (replaces N+1 per-row queries)
         enriched = enrich_paystubs(result.data or [])
 
-        # Sanitize for non-admin viewers
+        # Sanitize for non-admin viewers — for contractors, batch-fetch their
+        # contractor_earnings rows so we can swap company gross for their own.
         if role != "admin":
-            enriched = [_sanitize_paystub_for_viewer(p, role) for p in enriched]
+            earnings_by_paystub = (
+                _fetch_contractor_earnings_by_paystub([p["id"] for p in enriched])
+                if role == "contractor" else {}
+            )
+            enriched = [
+                _sanitize_paystub_for_viewer(p, role, earnings_by_paystub.get(p["id"]))
+                for p in enriched
+            ]
 
         return enriched
 
@@ -895,9 +970,15 @@ async def get_paystub(
             logger.warning(f"Failed to fetch payment distribution: {split_err}")
             paystub['payment_distribution'] = []
 
-        # Sanitize for non-admin viewers (drops file_hash, uploaded_by, etc.)
+        # Sanitize for non-admin viewers — pass in this paystub's
+        # contractor_earnings so contractors see their own numbers, not the
+        # company's gross.
         if role != "admin":
-            paystub = _sanitize_paystub_for_viewer(paystub, role)
+            ce = None
+            if role == "contractor":
+                ce_lookup = _fetch_contractor_earnings_by_paystub([paystub_id])
+                ce = ce_lookup.get(paystub_id)
+            paystub = _sanitize_paystub_for_viewer(paystub, role, ce)
 
         return paystub
 

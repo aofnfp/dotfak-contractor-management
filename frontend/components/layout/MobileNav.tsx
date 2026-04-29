@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigationConfig } from '@/lib/config/navigation'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -24,7 +24,7 @@ interface MobileNavProps {
 
 export function MobileNav({ isOpen, onClose }: MobileNavProps) {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const role = useEffectiveRole()
 
   // Close mobile nav when route changes
   useEffect(() => {
@@ -86,7 +86,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
             <div className="space-y-6">
               {navigationConfig.map((section) => {
                 const visibleItems = section.items.filter(
-                  (item) => !item.roles || item.roles.includes(user?.role as 'admin' | 'contractor' | 'manager')
+                  (item) => !item.roles || (role !== undefined && item.roles.includes(role))
                 )
                 if (visibleItems.length === 0) return null
 

@@ -16,6 +16,7 @@ import {
 import { PaymentTable } from '@/components/payments/PaymentTable'
 import { usePayments, usePaymentsSummary, useManagerPayments, useDeleteManagerPayment } from '@/lib/hooks/usePayments'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportToCSV } from '@/lib/utils/export'
 import { DollarSign, CreditCard, TrendingUp, Download, Trash2, Users } from 'lucide-react'
@@ -432,14 +433,14 @@ function ManagerPaymentsTab() {
  * Manager: own payments only
  */
 export default function PaymentsPage() {
-  const { user } = useAuth()
+  const role = useEffectiveRole()
 
   // Manager sees their own payments
-  if (user?.role === 'manager') {
+  if (role === 'manager') {
     return <ManagerPaymentsView />
   }
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = role === 'admin'
 
   return <AdminPaymentsView isAdmin={isAdmin} />
 }

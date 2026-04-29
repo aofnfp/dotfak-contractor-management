@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { adminImpersonationApi, type ImpersonationTarget } from '@/lib/api/admin-impersonation'
 import { updateImpersonatedUserId } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from './useAuth'
 
 interface ImpersonationState {
   target: ImpersonationTarget | null
@@ -11,8 +12,32 @@ interface ImpersonationState {
   stopImpersonating: () => Promise<void>
 }
 
+/**
+ * Read the persisted impersonation target from localStorage at module init,
+ * so the banner and the API client header are correct on the very first
+ * render after a refresh — no flicker, no half-state.
+ */
+function readPersistedTarget(): ImpersonationTarget | null {
+  if (typeof window === 'undefined') return null
+  const raw = localStorage.getItem('impersonate_target')
+  const id = localStorage.getItem('impersonate_user_id')
+  if (!raw || !id) {
+    // Half-state: clear so we don't end up with stale data
+    if (raw) localStorage.removeItem('impersonate_target')
+    if (id) localStorage.removeItem('impersonate_user_id')
+    return null
+  }
+  try {
+    return JSON.parse(raw) as ImpersonationTarget
+  } catch {
+    localStorage.removeItem('impersonate_target')
+    localStorage.removeItem('impersonate_user_id')
+    return null
+  }
+}
+
 export const useImpersonationStore = create<ImpersonationState>((set, get) => ({
-  target: null,
+  target: readPersistedTarget(),
   isStarting: false,
 
   setTarget: (t) => set({ target: t }),
@@ -83,4 +108,20 @@ export function useImpersonation() {
       queryClient.invalidateQueries()
     },
   }
+}
+
+/**
+ * Returns the role the UI should show for. When an admin is impersonating,
+ * this is the target's role; otherwise it's the user's actual role.
+ *
+ * Use this anywhere the navigation/menu/visibility should mirror the
+ * effective viewer (sidebar, mobile nav, role-gated components). For
+ * showing data that came from the API, the API itself is already scoped,
+ * so just check what's in the response.
+ */
+export function useEffectiveRole(): 'admin' | 'contractor' | 'manager' | undefined {
+  const target = useImpersonationStore((s) => s.target)
+  const userRole = useAuth((s) => s.user?.role)
+  if (target) return target.role
+  return userRole as 'admin' | 'contractor' | 'manager' | undefined
 }

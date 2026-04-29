@@ -18,7 +18,7 @@ import { usePaystub, useDeletePaystub } from '@/lib/hooks/usePaystubs'
 import { paystubsApi } from '@/lib/api/paystubs'
 import { AssignPaystubDialog } from '@/components/paystubs/AssignPaystubDialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffectiveRole } from '@/lib/hooks/useImpersonation'
 
 interface PaystubDetailPageProps {
   params: Promise<{
@@ -31,7 +31,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
   const router = useRouter()
   const { data: paystub, isLoading, error } = usePaystub(id)
   const deletePaystub = useDeletePaystub()
-  const role = useAuth((s) => s.user?.role)
+  const role = useEffectiveRole()
   const isAdmin = role === 'admin'
   const isContractor = role === 'contractor'
   const [hasUnassignedAccounts, setHasUnassignedAccounts] = useState(false)
@@ -259,33 +259,82 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
           </CardContent>
         </Card>
 
-        {/* Pay Summary */}
+        {/* Pay Summary — wording adapts per role to avoid leaking the
+            company's gross to contractors. */}
         <Card className="border-secondary">
           <CardHeader>
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-cta" />
-              <CardTitle>Pay Summary</CardTitle>
+              <CardTitle>{isContractor ? 'My Earnings' : 'Pay Summary'}</CardTitle>
             </div>
-            <CardDescription>Paystub financial summary</CardDescription>
+            <CardDescription>
+              {isContractor
+                ? 'Your earnings for this pay period'
+                : 'Paystub financial summary'}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Gross Pay</p>
-              <p className="text-2xl font-bold text-cta font-mono">
-                {formatCurrency(paystub.gross_pay)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Net Pay</p>
-              <p className="font-mono text-lg">
-                {formatCurrency(paystub.net_pay)}
-              </p>
-            </div>
-            {paystub.total_hours && (
-              <div>
-                <p className="text-sm text-muted-foreground">Total Hours</p>
-                <p className="font-mono">{Number(paystub.total_hours).toFixed(2)} hours</p>
-              </div>
+            {isContractor ? (
+              <>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Earnings</p>
+                  <p className="text-2xl font-bold text-cta font-mono">
+                    {paystub.contractor_total_earnings != null
+                      ? formatCurrency(paystub.contractor_total_earnings)
+                      : 'Pending'}
+                  </p>
+                </div>
+                {paystub.contractor_bonus_share != null && paystub.contractor_bonus_share > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Includes Bonus Share</p>
+                    <p className="font-mono">{formatCurrency(paystub.contractor_bonus_share)}</p>
+                  </div>
+                )}
+                {paystub.payment_status && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Payment Status</p>
+                    <p className="font-medium capitalize">
+                      {paystub.payment_status.replace('_', ' ')}
+                      {paystub.amount_pending != null && paystub.amount_pending > 0 && (
+                        <span className="ml-2 text-sm text-muted-foreground font-mono">
+                          ({formatCurrency(paystub.amount_pending)} pending)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {paystub.total_hours && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Hours</p>
+                    <p className="font-mono">{Number(paystub.total_hours).toFixed(2)} hours</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {isAdmin && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Gross Pay</p>
+                    <p className="text-2xl font-bold text-cta font-mono">
+                      {formatCurrency(paystub.gross_pay)}
+                    </p>
+                  </div>
+                )}
+                {isAdmin && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Net Pay</p>
+                    <p className="font-mono text-lg">
+                      {formatCurrency(paystub.net_pay)}
+                    </p>
+                  </div>
+                )}
+                {paystub.total_hours && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Hours</p>
+                    <p className="font-mono">{Number(paystub.total_hours).toFixed(2)} hours</p>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -322,8 +371,10 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
         )}
       </div>
 
-      {/* Earnings Breakdown */}
-      {paystub.paystub_data?.earnings && paystub.paystub_data.earnings.length > 0 && (
+      {/* Earnings Breakdown — admin only. The line items expose the
+          company's hourly rate from the client, which contractors and
+          managers shouldn't see. */}
+      {isAdmin && paystub.paystub_data?.earnings && paystub.paystub_data.earnings.length > 0 && (
         <Card className="border-secondary">
           <CardHeader>
             <CardTitle>Earnings Breakdown</CardTitle>
@@ -366,8 +417,8 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
         </Card>
       )}
 
-      {/* Taxes */}
-      {paystub.paystub_data?.taxes && paystub.paystub_data.taxes.length > 0 && (
+      {/* Taxes — admin only (these are the company's tax line items, not the contractor's) */}
+      {isAdmin && paystub.paystub_data?.taxes && paystub.paystub_data.taxes.length > 0 && (
         <Card className="border-secondary">
           <CardHeader>
             <CardTitle>Taxes</CardTitle>

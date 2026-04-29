@@ -32,6 +32,14 @@ export interface PaystubWithDetails extends Paystub {
   uploader_email: string
   contractor_amount: number | null
   admin_amount: number | null
+  // Contractor-scoped fields, set by the backend when the viewer is a
+  // contractor — never populated for admin/manager responses.
+  contractor_total_earnings?: number | null
+  contractor_regular_earnings?: number | null
+  contractor_bonus_share?: number | null
+  payment_status?: 'unpaid' | 'partially_paid' | 'paid' | null
+  amount_paid?: number | null
+  amount_pending?: number | null
 }
 
 export interface PaystubData {
