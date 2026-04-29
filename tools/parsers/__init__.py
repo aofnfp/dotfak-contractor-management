@@ -15,6 +15,7 @@ AVAILABLE_PARSERS = {
     "connexus": "connexus_parser",
     "everise": "everise_parser",
     "data_recognition": "dayforce_parser",
+    "measurement_incorporated": "paycor_parser",
 }
 
 
