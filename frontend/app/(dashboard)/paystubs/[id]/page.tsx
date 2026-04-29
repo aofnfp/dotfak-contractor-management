@@ -18,6 +18,7 @@ import { usePaystub, useDeletePaystub } from '@/lib/hooks/usePaystubs'
 import { paystubsApi } from '@/lib/api/paystubs'
 import { AssignPaystubDialog } from '@/components/paystubs/AssignPaystubDialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 interface PaystubDetailPageProps {
   params: Promise<{
@@ -30,12 +31,19 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
   const router = useRouter()
   const { data: paystub, isLoading, error } = usePaystub(id)
   const deletePaystub = useDeletePaystub()
+  const role = useAuth((s) => s.user?.role)
+  const isAdmin = role === 'admin'
+  const isContractor = role === 'contractor'
   const [hasUnassignedAccounts, setHasUnassignedAccounts] = useState(false)
   const [checkingAccounts, setCheckingAccounts] = useState(true)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
-  // Check for unassigned accounts when paystub loads
+  // Check for unassigned accounts when paystub loads (admin only — endpoint is admin-only)
   useEffect(() => {
+    if (!isAdmin) {
+      setCheckingAccounts(false)
+      return
+    }
     const checkAccounts = async () => {
       if (!paystub) return
 
@@ -52,7 +60,7 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
     }
 
     checkAccounts()
-  }, [paystub, id])
+  }, [paystub, id, isAdmin])
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this paystub? This action cannot be undone.')) {
@@ -118,86 +126,94 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
             Pay period: {formatDate(paystub.pay_period_begin)} - {formatDate(paystub.pay_period_end)}
           </p>
         </div>
-        <div className="flex gap-2">
-          {hasUnassignedAccounts && !checkingAccounts && (
+        {isAdmin && (
+          <div className="flex gap-2">
+            {hasUnassignedAccounts && !checkingAccounts && (
+              <Button
+                onClick={handleAssignAccounts}
+                variant="outline"
+                className="border-cta text-cta hover:bg-cta hover:text-white"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Assign Bank Accounts
+              </Button>
+            )}
             <Button
-              onClick={handleAssignAccounts}
-              variant="outline"
-              className="border-cta text-cta hover:bg-cta hover:text-white"
+              onClick={handleDelete}
+              variant="destructive"
+              disabled={deletePaystub.isPending}
             >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Assign Bank Accounts
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deletePaystub.isPending ? 'Deleting...' : 'Delete'}
             </Button>
-          )}
-          <Button
-            onClick={handleDelete}
-            variant="destructive"
-            disabled={deletePaystub.isPending}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {deletePaystub.isPending ? 'Deleting...' : 'Delete'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Status Badge */}
-      <div>
-        {paystub.auto_matched ? (
-          <Badge className="bg-cta hover:bg-cta/90">
-            Auto-matched to contractor
-          </Badge>
-        ) : paystub.contractor_assignment_id ? (
-          <Badge variant="default">
-            Manually Assigned
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-            <AlertCircle className="h-4 w-4 mr-1" />
-            Needs Assignment
-          </Badge>
+          </div>
         )}
       </div>
 
+      {/* Status Badge — admin/manager see assignment status; contractor sees nothing extra */}
+      {!isContractor && (
+        <div>
+          {paystub.auto_matched ? (
+            <Badge className="bg-cta hover:bg-cta/90">
+              Auto-matched to contractor
+            </Badge>
+          ) : paystub.contractor_assignment_id ? (
+            <Badge variant="default">
+              Manually Assigned
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Needs Assignment
+            </Badge>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Contractor Info */}
-        <Card className="border-secondary">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-cta" />
-              <CardTitle>Contractor</CardTitle>
-            </div>
-            <CardDescription>Assigned contractor information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {paystub.contractor_name ? (
-              <>
-                <div>
-                  <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{paystub.contractor_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Code</p>
-                  <p className="font-mono text-sm">{paystub.contractor_code}</p>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <AlertCircle className="h-11 w-11 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No contractor assigned
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setAssignDialogOpen(true)}
-                >
-                  Assign Contractor
-                </Button>
+        {/* Contractor Info — hidden for contractors viewing their own paystub */}
+        {!isContractor && (
+          <Card className="border-secondary">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-cta" />
+                <CardTitle>Contractor</CardTitle>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <CardDescription>Assigned contractor information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {paystub.contractor_name ? (
+                <>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{paystub.contractor_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Code</p>
+                    <p className="font-mono text-sm">{paystub.contractor_code}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <AlertCircle className="h-11 w-11 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No contractor assigned
+                  </p>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setAssignDialogOpen(true)}
+                    >
+                      Assign Contractor
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Client Info */}
         <Card className="border-secondary">
@@ -251,34 +267,36 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
           </CardContent>
         </Card>
 
-        {/* File Info */}
-        <Card className="border-secondary">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-cta" />
-              <CardTitle>File Information</CardTitle>
-            </div>
-            <CardDescription>Upload and file details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Filename</p>
-              <p className="text-sm font-mono truncate">{paystub.file_name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">File Size</p>
-              <p className="text-sm">{formatFileSize(paystub.file_size)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Uploaded</p>
-              <p className="text-sm">{formatDate(paystub.created_at)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Uploaded By</p>
-              <p className="text-sm">{paystub.uploader_email}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* File Info — admin only (uploader email and file_path are sensitive) */}
+        {isAdmin && (
+          <Card className="border-secondary">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-cta" />
+                <CardTitle>File Information</CardTitle>
+              </div>
+              <CardDescription>Upload and file details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Filename</p>
+                <p className="text-sm font-mono truncate">{paystub.file_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">File Size</p>
+                <p className="text-sm">{formatFileSize(paystub.file_size)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Uploaded</p>
+                <p className="text-sm">{formatDate(paystub.created_at)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Uploaded By</p>
+                <p className="text-sm">{paystub.uploader_email}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Earnings Breakdown */}
@@ -361,17 +379,19 @@ export default function PaystubDetailPage({ params }: PaystubDetailPageProps) {
         </Card>
       )}
 
-      {/* Assign Paystub Dialog */}
-      <AssignPaystubDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        paystubId={id}
-        clientCompanyId={paystub.client_company_id}
-        clientName={paystub.client_name}
-      />
+      {/* Assign Paystub Dialog — admin only */}
+      {isAdmin && (
+        <AssignPaystubDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          paystubId={id}
+          clientCompanyId={paystub.client_company_id}
+          clientName={paystub.client_name}
+        />
+      )}
 
-      {/* Payment Distribution */}
-      {paystub.payment_distribution && paystub.payment_distribution.length > 0 && (
+      {/* Payment Distribution — admin only (shows full bank routing across owners) */}
+      {isAdmin && paystub.payment_distribution && paystub.payment_distribution.length > 0 && (
         <Card className="border-secondary">
           <CardHeader>
             <div className="flex items-center gap-2">

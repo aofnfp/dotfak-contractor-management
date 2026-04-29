@@ -28,12 +28,15 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 interface PaystubsTableProps {
   paystubs: PaystubWithDetails[]
   isLoading: boolean
+  role?: 'admin' | 'contractor' | 'manager'
 }
 
-export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }: PaystubsTableProps) {
+export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading, role }: PaystubsTableProps) {
   const router = useRouter()
   const deletePaystub = useDeletePaystub()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const isAdmin = role === 'admin'
+  const isContractor = role === 'contractor'
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this paystub? This action cannot be undone.')) {
@@ -77,14 +80,14 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
         <TableHeader>
           <TableRow className="bg-secondary/50 hover:bg-secondary/70">
             <TableHead className="font-heading">Pay Period</TableHead>
-            <TableHead className="font-heading">Contractor</TableHead>
+            {!isContractor && <TableHead className="font-heading">Contractor</TableHead>}
             <TableHead className="font-heading">Client</TableHead>
             <TableHead className="font-heading">Gross Pay</TableHead>
             <TableHead className="font-heading">Hours</TableHead>
-            <TableHead className="font-heading">Contractor Pay</TableHead>
-            <TableHead className="font-heading">Admin Pay</TableHead>
-            <TableHead className="font-heading">Status</TableHead>
-            <TableHead className="font-heading">Uploaded</TableHead>
+            {isAdmin && <TableHead className="font-heading">Contractor Pay</TableHead>}
+            {isAdmin && <TableHead className="font-heading">Admin Pay</TableHead>}
+            <TableHead className="font-heading">{isContractor ? 'Net Pay' : 'Status'}</TableHead>
+            {isAdmin && <TableHead className="font-heading">Uploaded</TableHead>}
             <TableHead className="text-right font-heading">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -105,21 +108,23 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
                   </p>
                 </div>
               </TableCell>
-              <TableCell>
-                {paystub.contractor_name ? (
-                  <div>
-                    <p className="font-medium">{paystub.contractor_name}</p>
-                    <p className="text-sm text-muted-foreground font-mono">
-                      {paystub.contractor_code}
-                    </p>
-                  </div>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Unassigned
-                  </Badge>
-                )}
-              </TableCell>
+              {!isContractor && (
+                <TableCell>
+                  {paystub.contractor_name ? (
+                    <div>
+                      <p className="font-medium">{paystub.contractor_name}</p>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {paystub.contractor_code}
+                      </p>
+                    </div>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Unassigned
+                    </Badge>
+                  )}
+                </TableCell>
+              )}
               <TableCell>
                 <div>
                   <p className="font-medium">{paystub.client_name}</p>
@@ -134,18 +139,24 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
               <TableCell className="text-muted-foreground">
                 {paystub.total_hours ? `${Number(paystub.total_hours).toFixed(2)} hrs` : '—'}
               </TableCell>
-              <TableCell className="font-mono">
-                {paystub.contractor_amount != null
-                  ? formatCurrency(paystub.contractor_amount)
-                  : <span className="text-muted-foreground text-xs">—</span>}
-              </TableCell>
-              <TableCell className="font-mono">
-                {paystub.admin_amount != null
-                  ? formatCurrency(paystub.admin_amount)
-                  : <span className="text-muted-foreground text-xs">—</span>}
-              </TableCell>
+              {isAdmin && (
+                <TableCell className="font-mono">
+                  {paystub.contractor_amount != null
+                    ? formatCurrency(paystub.contractor_amount)
+                    : <span className="text-muted-foreground text-xs">—</span>}
+                </TableCell>
+              )}
+              {isAdmin && (
+                <TableCell className="font-mono">
+                  {paystub.admin_amount != null
+                    ? formatCurrency(paystub.admin_amount)
+                    : <span className="text-muted-foreground text-xs">—</span>}
+                </TableCell>
+              )}
               <TableCell>
-                {paystub.auto_matched ? (
+                {isContractor ? (
+                  <span className="font-mono">{formatCurrency(paystub.net_pay)}</span>
+                ) : paystub.auto_matched ? (
                   <Badge className="bg-cta hover:bg-cta/90">
                     <UserCheck className="h-3 w-3 mr-1" />
                     Auto-matched
@@ -161,12 +172,14 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
                   </Badge>
                 )}
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                <div>
-                  <p>{formatDate(paystub.created_at)}</p>
-                  <p className="text-xs">by {paystub.uploader_email}</p>
-                </div>
-              </TableCell>
+              {isAdmin && (
+                <TableCell className="text-sm text-muted-foreground">
+                  <div>
+                    <p>{formatDate(paystub.created_at)}</p>
+                    <p className="text-xs">by {paystub.uploader_email}</p>
+                  </div>
+                </TableCell>
+              )}
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -186,18 +199,22 @@ export const PaystubsTable = memo(function PaystubsTable({ paystubs, isLoading }
                       <Eye className="mr-2 h-4 w-4" />
                       View Details
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(paystub.id)
-                      }}
-                      className="text-destructive focus:text-destructive"
-                      disabled={deletingId === paystub.id}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {deletingId === paystub.id ? 'Deleting...' : 'Delete'}
-                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(paystub.id)
+                          }}
+                          className="text-destructive focus:text-destructive"
+                          disabled={deletingId === paystub.id}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {deletingId === paystub.id ? 'Deleting...' : 'Delete'}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

@@ -53,7 +53,6 @@ export const navigationConfig: NavSection[] = [
         href: '/paystubs',
         icon: FileText,
         description: 'Upload and view paystubs',
-        roles: ['admin'],
       },
       {
         title: 'Managers',
