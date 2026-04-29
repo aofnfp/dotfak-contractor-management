@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { initializeAuth } from '@/lib/hooks/useAuth'
+import { initializeImpersonation } from '@/lib/hooks/useImpersonation'
 
 /**
  * Auth Initializer Component
@@ -12,6 +13,7 @@ import { initializeAuth } from '@/lib/hooks/useAuth'
 export function AuthInitializer() {
   useEffect(() => {
     initializeAuth()
+    initializeImpersonation()
   }, [])
 
   return null

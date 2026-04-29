@@ -21,6 +21,32 @@ const apiClient = axios.create({
 let cachedToken: string | null = null
 
 /**
+ * Impersonation Cache
+ * When an admin is impersonating, we attach X-Impersonate-User on every GET.
+ * Backend enforces that only admins can impersonate and only on GET requests.
+ */
+let impersonatedUserId: string | null = null
+
+export function updateImpersonatedUserId(userId: string | null) {
+  impersonatedUserId = userId
+  if (typeof window !== 'undefined') {
+    if (userId) {
+      localStorage.setItem('impersonate_user_id', userId)
+    } else {
+      localStorage.removeItem('impersonate_user_id')
+    }
+  }
+}
+
+function getImpersonatedUserId(): string | null {
+  if (impersonatedUserId) return impersonatedUserId
+  if (typeof window !== 'undefined') {
+    impersonatedUserId = localStorage.getItem('impersonate_user_id')
+  }
+  return impersonatedUserId
+}
+
+/**
  * Get authentication token from cache or localStorage
  * Caches token in memory to avoid repeated localStorage access
  */
@@ -59,6 +85,13 @@ apiClient.interceptors.request.use(
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    // Attach X-Impersonate-User on GETs only — backend rejects impersonation
+    // on writes anyway, and we don't want to silently break mutations.
+    const impersonateId = getImpersonatedUserId()
+    if (impersonateId && config.headers && (config.method?.toLowerCase() === 'get')) {
+      config.headers['X-Impersonate-User'] = impersonateId
     }
 
     return config
