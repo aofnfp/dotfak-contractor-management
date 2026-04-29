@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TableSkeleton } from '@/components/ui/table-skeleton'
 import { Pagination } from '@/components/ui/pagination'
 import { usePaystubs } from '@/lib/hooks/usePaystubs'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 // Lazy load heavy table component
 const PaystubsTable = dynamic(
@@ -24,6 +25,9 @@ const ITEMS_PER_PAGE = 20
 export default function PaystubsPage() {
   const router = useRouter()
   const { data: paystubs, isLoading, error } = usePaystubs()
+  const role = useAuth((s) => s.user?.role)
+  const isAdmin = role === 'admin'
+  const isManager = role === 'manager'
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -88,22 +92,30 @@ export default function PaystubsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-heading font-bold tracking-tight">Paystubs</h1>
+          <h1 className="text-3xl font-heading font-bold tracking-tight">
+            {isAdmin ? 'Paystubs' : isManager ? 'Staff Paystubs' : 'My Paystubs'}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Upload and manage contractor paystubs
+            {isAdmin
+              ? 'Upload and manage contractor paystubs'
+              : isManager
+                ? 'Paystubs for staff you oversee'
+                : 'View and download your paystubs'}
           </p>
         </div>
-        <Button
-          onClick={() => router.push('/paystubs/upload')}
-          className="bg-cta hover:bg-cta/90 text-white"
-        >
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Paystub
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => router.push('/paystubs/upload')}
+            className="bg-cta hover:bg-cta/90 text-white"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Paystub
+          </Button>
+        )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Stats Cards — admin sees matched/unmatched; non-admin sees total only */}
+      <div className={`grid gap-4 ${isAdmin ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
         <Card className="border-secondary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Paystubs</CardTitle>
@@ -112,36 +124,40 @@ export default function PaystubsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              All uploaded paystubs
+              {isAdmin ? 'All uploaded paystubs' : isManager ? 'Across your staff' : 'All your paystubs'}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-secondary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Matched</CardTitle>
-            <FileText className="h-4 w-4 text-cta" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-cta">{stats.matched}</div>
-            <p className="text-xs text-muted-foreground">
-              Assigned to contractors
-            </p>
-          </CardContent>
-        </Card>
+        {isAdmin && (
+          <>
+            <Card className="border-secondary">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Matched</CardTitle>
+                <FileText className="h-4 w-4 text-cta" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-cta">{stats.matched}</div>
+                <p className="text-xs text-muted-foreground">
+                  Assigned to contractors
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-secondary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unmatched</CardTitle>
-            <FileText className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.unmatched}</div>
-            <p className="text-xs text-muted-foreground">
-              Need assignment
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="border-secondary">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Unmatched</CardTitle>
+                <FileText className="h-4 w-4 text-yellow-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">{stats.unmatched}</div>
+                <p className="text-xs text-muted-foreground">
+                  Need assignment
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Search */}
@@ -164,7 +180,7 @@ export default function PaystubsPage() {
       {/* Paystubs Table */}
       <Card className="border-secondary">
         <CardHeader>
-          <CardTitle>All Paystubs</CardTitle>
+          <CardTitle>{isAdmin ? 'All Paystubs' : isManager ? 'Staff Paystubs' : 'My Paystubs'}</CardTitle>
           <CardDescription>
             {filteredPaystubs.length} paystub(s) found
           </CardDescription>
@@ -179,6 +195,7 @@ export default function PaystubsPage() {
               <PaystubsTable
                 paystubs={paginatedPaystubs}
                 isLoading={isLoading}
+                role={role}
               />
               {filteredPaystubs.length > 0 && (
                 <Pagination

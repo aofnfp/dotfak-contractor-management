@@ -17,7 +17,12 @@ from extract_pdf_text import extract_text_from_pdf
 from parsers import get_parser, AVAILABLE_PARSERS
 
 from backend.config import supabase_admin_client
-from backend.dependencies import require_admin
+from backend.dependencies import (
+    require_admin,
+    verify_token,
+    get_contractor_id,
+    get_manager_id,
+)
 from backend.services.enrichment_service import enrich_paystubs
 from backend.services import PaystubService, calculate_contractor_earnings, BankAccountService
 from backend.services.manager_earnings_service import calculate_manager_earnings
@@ -26,6 +31,73 @@ from backend.schemas import (
     AccountAssignmentRequest,
     AccountAssignmentResponse,
 )
+
+
+# Fields stripped from paystub responses for non-admin viewers.
+# Admins see everything; contractors and managers get a sanitized subset.
+_NON_ADMIN_HIDDEN_FIELDS = (
+    "file_hash",
+    "file_path",
+    "uploaded_by",
+    "admin_amount",  # admin-side bank split totals (sensitive routing)
+)
+
+
+def _scoped_assignment_ids_for_user(user: dict) -> Optional[List[str]]:
+    """Return the list of contractor_assignment IDs visible to a non-admin user.
+
+    - Admin: returns None (no scoping — caller should not filter).
+    - Contractor: returns assignment IDs where contractor_id = user's contractor.
+    - Manager: returns assignment IDs that this manager oversees via manager_assignments.
+    - Anyone else: returns [] (deny-by-default).
+    """
+    role = user.get("role")
+    if role == "admin":
+        return None
+
+    if role == "contractor":
+        contractor_id = get_contractor_id(user["user_id"])
+        if not contractor_id:
+            return []
+        result = supabase_admin_client.table("contractor_assignments").select("id").eq(
+            "contractor_id", contractor_id
+        ).execute()
+        return [a["id"] for a in (result.data or [])]
+
+    if role == "manager":
+        manager_id = get_manager_id(user["user_id"])
+        if not manager_id:
+            return []
+        result = supabase_admin_client.table("manager_assignments").select(
+            "contractor_assignment_id"
+        ).eq("manager_id", manager_id).eq("is_active", True).execute()
+        return [a["contractor_assignment_id"] for a in (result.data or [])]
+
+    return []
+
+
+def _sanitize_paystub_for_viewer(paystub: dict, role: str) -> dict:
+    """Strip admin-only fields from a paystub response for non-admins."""
+    if role == "admin":
+        return paystub
+    sanitized = {k: v for k, v in paystub.items() if k not in _NON_ADMIN_HIDDEN_FIELDS}
+    # Strip company_margin from the embedded earnings sub-object
+    earnings = sanitized.get("earnings")
+    if isinstance(earnings, dict):
+        sanitized["earnings"] = {
+            k: v for k, v in earnings.items() if k != "company_margin"
+        }
+    # Drop raw paystub_data for non-admins by default — it includes employer
+    # FEIN, bank routing, and other internals. Re-expose a curated subset.
+    raw = sanitized.pop("paystub_data", None) or {}
+    sanitized["paystub_data"] = {
+        "header": raw.get("header"),
+        "summary": raw.get("summary"),
+        "earnings": raw.get("earnings", []),
+        "taxes": raw.get("taxes", []),
+        "tax_info": raw.get("tax_info"),
+    }
+    return sanitized
 
 logger = logging.getLogger(__name__)
 
@@ -531,29 +603,44 @@ async def list_paystubs(
     contractor_id: Optional[str] = None,
     client_company_id: Optional[str] = None,
     limit: int = 100,
-    user: dict = Depends(require_admin)
+    user: dict = Depends(verify_token)
 ):
     """
-    List paystubs (admin only).
+    List paystubs.
+
+    - Admin: all paystubs (optional filters by contractor_id / client_company_id).
+    - Contractor: only paystubs assigned to themselves.
+    - Manager: only paystubs for staff this manager oversees.
 
     Args:
-        contractor_id: Filter by contractor UUID
-        client_company_id: Filter by client company UUID
+        contractor_id: Filter by contractor UUID (admin only)
+        client_company_id: Filter by client company UUID (admin only)
         limit: Maximum number of results
-        user: Current user (admin)
+        user: Current user
 
     Returns:
         List of paystubs
     """
     try:
+        role = user.get("role", "")
+        scoped_ids = _scoped_assignment_ids_for_user(user)
+
+        # Non-admin with no visible assignments → empty list
+        if scoped_ids is not None and not scoped_ids:
+            return []
+
         query = supabase_admin_client.table("paystubs").select("*")
 
-        if contractor_id:
-            # Filter by contractor via assignment
-            query = query.eq("contractor_assignment_id.contractor_id", contractor_id)
-
-        if client_company_id:
-            query = query.eq("client_company_id", client_company_id)
+        # Admin filter knobs
+        if role == "admin":
+            if contractor_id:
+                # Filter by contractor via assignment
+                query = query.eq("contractor_assignment_id.contractor_id", contractor_id)
+            if client_company_id:
+                query = query.eq("client_company_id", client_company_id)
+        else:
+            # Restrict to the scoped assignment IDs for contractor/manager
+            query = query.in_("contractor_assignment_id", scoped_ids)
 
         result = query.order("created_at", desc=True).limit(limit).execute()
 
@@ -593,7 +680,13 @@ async def list_paystubs(
             paystub['admin_amount'] = splits['admin'] if splits else None
 
         # Batch enrich contractor/client names (replaces N+1 per-row queries)
-        return enrich_paystubs(result.data or [])
+        enriched = enrich_paystubs(result.data or [])
+
+        # Sanitize for non-admin viewers
+        if role != "admin":
+            enriched = [_sanitize_paystub_for_viewer(p, role) for p in enriched]
+
+        return enriched
 
     except Exception as e:
         logger.error(f"Failed to list paystubs: {str(e)}")
@@ -606,10 +699,14 @@ async def list_paystubs(
 @router.get("/{paystub_id}")
 async def get_paystub(
     paystub_id: int,
-    user: dict = Depends(require_admin)
+    user: dict = Depends(verify_token)
 ):
     """
-    Get paystub details by ID (admin only).
+    Get paystub details by ID.
+
+    - Admin: any paystub, full data.
+    - Contractor: only their own paystubs (sanitized).
+    - Manager: only paystubs for staff they oversee (sanitized).
 
     Args:
         paystub_id: Paystub ID
@@ -619,6 +716,16 @@ async def get_paystub(
         Paystub details with earnings
     """
     try:
+        role = user.get("role", "")
+        scoped_ids = _scoped_assignment_ids_for_user(user)
+
+        # Non-admin with no visible assignments → 404 (don't leak existence)
+        if scoped_ids is not None and not scoped_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Paystub not found"
+            )
+
         # Get paystub
         paystub_result = supabase_admin_client.table("paystubs").select("*").eq(
             "id", paystub_id
@@ -631,6 +738,14 @@ async def get_paystub(
             )
 
         paystub = paystub_result.data[0]
+
+        # Authorization for non-admins: paystub must be in the user's scope
+        if scoped_ids is not None:
+            if paystub.get("contractor_assignment_id") not in scoped_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Paystub not found"
+                )
 
         # Compute total hours from earnings in paystub_data
         # Exclude supplemental lines that duplicate hours (Premium, Differential, GTL, Gross Up)
@@ -699,6 +814,10 @@ async def get_paystub(
         except Exception as split_err:
             logger.warning(f"Failed to fetch payment distribution: {split_err}")
             paystub['payment_distribution'] = []
+
+        # Sanitize for non-admin viewers (drops file_hash, uploaded_by, etc.)
+        if role != "admin":
+            paystub = _sanitize_paystub_for_viewer(paystub, role)
 
         return paystub
 
