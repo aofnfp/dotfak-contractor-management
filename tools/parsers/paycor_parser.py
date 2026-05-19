@@ -11,10 +11,19 @@ Layout notes from pdfplumber:
   - Body block: employee info (left) and employer info (right) on the same line.
   - Earnings table uses 4-decimal RATE column then HOUR/UNIT, CURRENT, YTD HOUR/UNIT, YTD.
   - Taxes table uses short codes (MED, SOC) with a "Total" row prefixed with "$".
-  - Net Pay sits on its own line with a single "$" amount.
-  - Bank shown on the void advice (e.g., FIFTH THIRD BANK) but NO account number
-    is printed, so payment_info carries the bank name with account_number=None.
-    Auto-match will skip these and an admin will assign them once.
+  - Net Pay sits on its own line. On check-issued advices it appears as
+    "Net Pay $497.44"; on direct-deposit advices Paycor prints the masked
+    deposit account between the label and the amount: "Net Pay XXXXXX4905 $933.52".
+  - Two payment-info layouts:
+      * Check-issued (paper check): the void advice shows the bank name (e.g.
+        FIFTH THIRD BANK) above the "Paycor, Inc." footer with an
+        asterisk-prefixed amount ($**497.44) on the TO THE line; no account
+        number is printed, so account_number=None.
+      * Direct-deposit: the receipt has "DIRECT DEPOSIT$933.52",
+        "TO ACCOUNT # XXXXXX4905", and "BANK # XXXXXX6768" lines (no
+        human-readable bank name). We capture the masked account number so
+        the bank-account auto-match can link the deposit to a registered
+        account.
 """
 
 import re
@@ -238,9 +247,11 @@ class PaycorParser:
             summary["current"]["employee_taxes"] = self._parse_decimal(taxes_match.group(1))
             summary["ytd"]["employee_taxes"] = self._parse_decimal(taxes_match.group(2))
 
-        # "Net Pay $497.44" (current only) or "Net Pay $497.44 $497.44" (current + ytd)
+        # "Net Pay $497.44" (check-issued, current only) or
+        # "Net Pay $497.44 $497.44" (current + ytd) or
+        # "Net Pay XXXXXX4905 $933.52" (direct deposit, account number between label and amount).
         net_match = re.search(
-            r'Net Pay\s+\$([\d,]+\.\d{2})(?:\s+\$([\d,]+\.\d{2}))?',
+            r'Net Pay\s+(?:X+\d+\s+)?\$([\d,]+\.\d{2})(?:\s+\$([\d,]+\.\d{2}))?',
             text
         )
         if net_match:
@@ -362,25 +373,54 @@ class PaycorParser:
         return info
 
     def _parse_payment_info(self, text: str) -> List[Dict[str, Any]]:
-        """Extract direct deposit info.
+        """Extract payment/deposit info.
 
-        Paycor void advices show the bank name only (no account number), so
-        we emit a single payment entry with bank_name set and account_number
-        left None. The bank-account auto-match service skips entries without
-        a 4+ digit account number; an admin can assign manually after upload.
+        Two layouts are supported:
+
+        * Direct-deposit receipts ("DD"): the body has
+          "DIRECT DEPOSIT$933.52", "TO ACCOUNT # XXXXXX4905", and
+          "BANK # XXXXXX6768". We capture the masked account number so
+          BankAccountService.check_paystub_accounts can match against a
+          registered bank account.
+
+        * Check-issued advices: amount appears as "$**497.44" on the
+          TO THE line and the bank name sits above the "Paycor, Inc."
+          footer. No account number is printed, so account_number stays None
+          and the auto-match service will skip the entry until an admin
+          assigns it.
         """
         payments = []
 
-        # "Pay this Amount" / "$**497.44" sit near the top of the check stub.
-        # The bank name is the line immediately above "Paycor, Inc.".
+        # --- Direct-deposit layout ---
+        dd_amount_match = re.search(
+            r'DIRECT DEPOSIT\s*\$([\d,]+\.\d{2})', text
+        )
+        dd_account_match = re.search(
+            r'TO ACCOUNT\s*#\s*X+(\d+)', text
+        )
+        if dd_amount_match and dd_account_match:
+            dd_bank_match = re.search(r'BANK\s*#\s*X+(\d+)', text)
+            payments.append({
+                "bank_name": "",
+                "account_name": (
+                    f"Direct Deposit (bank ****{dd_bank_match.group(1)})"
+                    if dd_bank_match else "Direct Deposit"
+                ),
+                "account_number": dd_account_match.group(1),
+                "amount": self._parse_decimal(dd_amount_match.group(1)),
+                "currency": "USD"
+            })
+            return payments
+
+        # --- Check-issued layout ---
         amount_match = re.search(r'\$\*+([\d,]+\.\d{2})', text)
         if not amount_match:
             return payments
 
         amount = self._parse_decimal(amount_match.group(1))
-
-        # Bank name: line directly above the "Paycor, Inc." marker.
-        bank_match = re.search(r'^([A-Z][A-Z\s&\.\-,]+?)\s*\nPaycor,\s*Inc\.', text, re.MULTILINE)
+        bank_match = re.search(
+            r'^([A-Z][A-Z\s&\.\-,]+?)\s*\nPaycor,\s*Inc\.', text, re.MULTILINE
+        )
         bank_name = bank_match.group(1).strip() if bank_match else ""
 
         payments.append({
